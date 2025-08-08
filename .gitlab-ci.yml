@@ -1,4 +1,4 @@
-lstages:
+stages:
   - build
   - trigger
 
