@@ -1,6 +1,5 @@
 stages:
   - build
-  - deploy
   - trigger
 
 build-job:
@@ -13,16 +12,6 @@ build-job:
   artifacts:
     paths:
       - target/achievements-0.0.1-SNAPSHOT.jar
-
-deploy-job:
-  stage: deploy
-  image: docker:latest
-  tags:
-    - docker
-  script:
-    - docker-compose -f docker-compose.yml up -d --build backend
-  only:
-    - main
 
 trigger-deploy:
   stage: trigger
