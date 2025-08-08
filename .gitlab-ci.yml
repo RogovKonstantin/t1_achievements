@@ -1,6 +1,7 @@
 stages:
   - build
   - deploy
+  - trigger
 
 build-job:
   stage: build
@@ -22,3 +23,15 @@ deploy-job:
     - docker-compose -f docker-compose.yml up -d --build backend
   only:
     - main
+
+trigger-deploy:
+  stage: trigger
+  image: curlimages/curl:latest
+  script:
+    - curl -X POST \
+        -F token=glptt-8e1f3046d2f20eff6b948b2bfc510b73368d1efa \
+        -F ref=main \
+        "https://it-camp.innoca.local/api/v4/projects/260/trigger/pipeline"
+  only:
+    - main
+  when: on_success
