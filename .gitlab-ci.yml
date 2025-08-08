@@ -1,0 +1,24 @@
+stages:
+  - build
+  - deploy
+
+build-job:
+  stage: build
+  image: maven:3.9.6-eclipse-temurin-21
+  tags:
+    - docker
+  script:
+    - mvn clean package -DskipTests
+  artifacts:
+    paths:
+      - target/achievements-0.0.1-SNAPSHOT.jar
+
+deploy-job:
+  stage: deploy
+  image: docker:latest
+  tags:
+    - docker
+  script:
+    - docker-compose -f docker-compose.yml up -d --build backend
+  only:
+    - main
