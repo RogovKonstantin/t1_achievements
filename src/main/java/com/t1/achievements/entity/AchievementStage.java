@@ -4,6 +4,8 @@ package com.t1.achievements.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "achievement_stages")
 @Data
@@ -12,8 +14,8 @@ import lombok.*;
 @Builder
 public class AchievementStage {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne
     @JoinColumn(name = "achievement_id")
