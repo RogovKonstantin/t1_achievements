@@ -8,5 +8,4 @@ import java.util.UUID;
 
 public interface UserAchievementProgressRepository extends JpaRepository<UserAchievementProgress, UUID> {
     List<UserAchievementProgress> findByUserId(UUID userId);
-
 }

@@ -19,21 +19,18 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // --- 404: нет подходящего хэндлера/маппинга
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<StatusResponse> handleNoHandler(NoHandlerFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new StatusResponse("error", "Ресурс не найден: " + ex.getRequestURL()));
     }
 
-    // --- 404: отсутствующая path‑переменная (например, /achievements/user без {userId})
     @ExceptionHandler(MissingPathVariableException.class)
     public ResponseEntity<StatusResponse> handleMissingPathVar(MissingPathVariableException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new StatusResponse("error", "Параметр пути '" + ex.getVariableName() + "' обязателен"));
     }
 
-    // --- 404: неверный формат path/query параметра (в т.ч. "" → UUID)
     @ExceptionHandler({
             MethodArgumentTypeMismatchException.class,
             ConversionFailedException.class,
@@ -44,14 +41,12 @@ public class GlobalExceptionHandler {
                 .body(new StatusResponse("error", "Некорректный идентификатор ресурса"));
     }
 
-    // --- 404: доменная «нет такого ресурса»
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<StatusResponse> handleNotFound(NotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new StatusResponse("error", ex.getMessage()));
     }
 
-    // --- 400: прочая валидация запроса (оставим Bad Request)
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<StatusResponse> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -85,14 +80,12 @@ public class GlobalExceptionHandler {
                 .body(new StatusResponse("error", "Некорректное тело запроса"));
     }
 
-    // --- на всякий случай: стандартный 404, если кто-то бросит NoSuchElementException
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<StatusResponse> handleNoSuchElement(NoSuchElementException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new StatusResponse("error", ex.getMessage()));
     }
 
-    // --- общий 500
     @ExceptionHandler(Exception.class)
     public ResponseEntity<StatusResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

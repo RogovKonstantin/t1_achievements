@@ -11,7 +11,7 @@ public class Section {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(unique = true) private String code; // optional
+    @Column(unique = true) private String code;
     @Column(nullable = false) private String name;
     private String description;
     @Column(nullable = false) private Integer sortOrder = 100;

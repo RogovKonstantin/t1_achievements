@@ -7,6 +7,4 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AchievementCriterionRepository extends JpaRepository<AchievementCriterion, UUID> {
-    List<AchievementCriterion> findByAchievementIdIn(List<UUID> achievementIds);
-
 }

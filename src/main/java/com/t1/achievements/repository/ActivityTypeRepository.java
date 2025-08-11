@@ -7,5 +7,4 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ActivityTypeRepository extends JpaRepository<ActivityType, UUID> {
-    Optional<ActivityType> findByCode(String code);
 }

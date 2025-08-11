@@ -28,7 +28,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false) // захэшированный пароль
+    @Column(nullable = false)
     private String password;
 
     @Column(nullable = false)
@@ -37,11 +37,15 @@ public class User {
     private String email;
     private String phone;
 
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "avatar_asset_id")
+    private Asset avatar;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
@@ -51,3 +55,4 @@ public class User {
 
     @PreUpdate void touch() { this.updatedAt = Instant.now(); }
 }
+

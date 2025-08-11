@@ -30,7 +30,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = auth.substring(7);
         try {
-            // Бросит исключение, если подпись/срок/формат не ок
             var claims = jwt.parse(token).getBody();
             String username = claims.getSubject();
 
@@ -42,7 +41,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             chain.doFilter(req, res);
         } catch (JwtException e) {
-            // важно: вернуть 401, а не пропускать дальше до 403
             res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
         }
     }

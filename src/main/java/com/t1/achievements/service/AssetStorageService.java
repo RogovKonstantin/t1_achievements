@@ -27,11 +27,6 @@ public class AssetStorageService {
                 BucketExistsArgs.builder().bucket(bucket).build());
         if (!exists) {
             minio.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
-            // при желании: включить versioning (если используете)
-            // minio.setBucketVersioning(
-            //   SetBucketVersioningArgs.builder()
-            //     .bucket(bucket)
-            //     .config(VersioningConfiguration.newConfig().status(true)).build());
         }
     }
 
@@ -67,5 +62,6 @@ public class AssetStorageService {
                         .expiry((int) ttl.toSeconds())
                         .build());
     }
+
 }
 

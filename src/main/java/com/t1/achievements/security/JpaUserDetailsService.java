@@ -17,7 +17,7 @@ public class JpaUserDetailsService implements UserDetailsService {
         var u = userRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
         var auths = u.getRoles().stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getCode())) // ADMIN -> ROLE_ADMIN
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getCode()))
                 .map(GrantedAuthority.class::cast)
                 .toList();
         return org.springframework.security.core.userdetails.User

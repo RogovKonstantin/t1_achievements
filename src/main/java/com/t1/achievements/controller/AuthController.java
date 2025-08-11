@@ -39,16 +39,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req) {
         var auth = new UsernamePasswordAuthenticationToken(req.username(), req.password());
-        authManager.authenticate(auth); // кинет BadCredentialsException если не ок
+        authManager.authenticate(auth);
 
         UserDetails user = uds.loadUserByUsername(req.username());
 
-        // роли для claim
         List<String> roles = user.getAuthorities().stream()
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .toList();
 
-        // можно добавить полезные extra‑клеймы (id, ФИО)
         var domainUser = userRepo.findByUsername(req.username()).orElseThrow();
         Map<String,Object> extra = Map.of(
                 "uid", domainUser.getId().toString(),

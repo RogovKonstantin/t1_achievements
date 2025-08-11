@@ -18,9 +18,9 @@ public class Asset {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false) private String bucket;      // e.g. "achievements"
-    @Column(nullable = false) private String objectKey;   // e.g. "icons/ambassador.png"
-    @Column(nullable = false) private String versionId = ""; // пустая строка вместо NULL
+    @Column(nullable = false) private String bucket;
+    @Column(nullable = false) private String objectKey;
+    @Column(nullable = false) private String versionId = "";
 
     private String etag;
     private String contentType;

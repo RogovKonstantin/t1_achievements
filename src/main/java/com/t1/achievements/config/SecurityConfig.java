@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -32,7 +33,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 2) Основная цепочка – всё остальное
     @Bean
     @Order(2)
     public SecurityFilterChain apiChain(HttpSecurity http) throws Exception {
@@ -40,9 +40,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/assets/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/favicon.ico").permitAll()
                         .requestMatchers(
                                 "/auth/login",
-                                "/error" // важно, чтобы хэндлер ошибок отрабатывал без 401
+                                "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

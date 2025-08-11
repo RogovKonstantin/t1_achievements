@@ -30,7 +30,7 @@ public class UserAchievement {
     private Instant awardedAt = Instant.now();
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "awarded_by")
-    private User awardedBy; // null для авто
+    private User awardedBy;
 
     @Enumerated(EnumType.STRING) @Column(nullable = false)
     private Method method = Method.AUTO;

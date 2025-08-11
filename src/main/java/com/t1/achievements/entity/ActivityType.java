@@ -13,10 +13,10 @@ public class ActivityType {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true) private String code; // "LMS_COURSE", "CONF_TALK"
+    @Column(nullable = false, unique = true) private String code;
     @Column(nullable = false) private String name;
     private String description;
-    private String sourceSystem; // "LMS", "HR-LINK", ...
+    private String sourceSystem;
 
     @Column(nullable = false) private Boolean active = true;
     @Column(nullable = false, updatable = false) private Instant createdAt = Instant.now();

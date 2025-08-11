@@ -20,7 +20,7 @@ public class UserAchievementProgress {
     private Achievement achievement;
 
     @Column(nullable = false) private Integer currentCount = 0;
-    @Column(nullable = false) private Double percentDone = 0.0; // 0..100
+    @Column(nullable = false) private Double percentDone = 0.0;
 
     @Column(nullable = false) private Instant updatedAt = Instant.now();
 }

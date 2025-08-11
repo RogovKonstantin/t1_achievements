@@ -30,11 +30,9 @@ public class ActivityLog {
     @Column(nullable = false)
     private Instant occurredAt;
 
-    // делаем NOT NULL с дефолтом "" — чтобы работал обычный unique index
     @Column(nullable = false) private String sourceSystem = "";
     @Column(nullable = false) private String sourceEventId = "";
 
-    // положи сюда JSON-строку, колонка в БД — jsonb
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> payload = Map.of();
