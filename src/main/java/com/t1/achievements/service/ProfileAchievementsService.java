@@ -1,12 +1,7 @@
 package com.t1.achievements.service;
 
-import com.t1.achievements.entity.Achievement;
-import com.t1.achievements.entity.Asset;
-import com.t1.achievements.entity.Section;
-import com.t1.achievements.entity.User;
-import com.t1.achievements.entity.UserAchievementProgress;
+import com.t1.achievements.entity.*;
 import com.t1.achievements.repository.*;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +19,7 @@ public class ProfileAchievementsService {
     private final AchievementRepository achievementRepo;
     private final UserAchievementRepository userAchRepo;
     private final UserAchievementProgressRepository progressRepo;
+    private final AchievementCriterionRepository criterionRepo;
 
     private String assetUrl(Asset a) {
         if (a == null) return null;
@@ -31,10 +27,18 @@ public class ProfileAchievementsService {
     }
 
     public record UserDto(String fullName, String department, String position, String avatarUrl) {}
+
+    /** ← вместо percentDone теперь ступени */
     public record AchievementCardDto(
-            UUID id, String title, String iconUrl,
-            double percentDone, boolean awarded, double rarityPercent
+            UUID id,
+            String title,
+            String iconUrl,
+            int currentStep,
+            int totalSteps,
+            boolean awarded,
+            double rarityPercent
     ) {}
+
     public record SectionDto(UUID id, String name, String description, List<AchievementCardDto> achievements) {}
     public record ProfileViewDto(UserDto user, int unlockedCount, List<SectionDto> sections) {}
 
@@ -47,8 +51,9 @@ public class ProfileAchievementsService {
                 .map(ua -> ua.getAchievement().getId())
                 .collect(Collectors.toSet());
 
-        Map<UUID, Double> progress = progressRepo.findByUserId(userId).stream()
-                .collect(Collectors.toMap(p -> p.getAchievement().getId(), UserAchievementProgress::getPercentDone));
+        // прогресс пользователя по ачивкам
+        Map<UUID, UserAchievementProgress> progress = progressRepo.findByUserId(userId).stream()
+                .collect(Collectors.toMap(p -> p.getAchievement().getId(), p -> p));
 
         int unlockedCount = awarded.size();
 
@@ -61,6 +66,14 @@ public class ProfileAchievementsService {
         List<Section> sections = sectionRepo.findByActiveTrueOrderBySortOrderAsc();
         List<Achievement> allAchievements = achievementRepo.findAllActiveWithDeps();
 
+        // для тех ачивок, где у пользователя еще нет записи прогресса, надо знать totalSteps
+        Set<UUID> achIds = allAchievements.stream().map(Achievement::getId).collect(Collectors.toSet());
+        Map<UUID, Integer> totalStepsByAch = criterionRepo
+                .sumRequiredByAchievementIds(achIds)
+                .stream()
+                .collect(Collectors.toMap(AchievementCriterionRepository.SumRequired::getAchievementId,
+                        r -> Optional.ofNullable(r.getTotalRequired()).orElse(1)));
+
         Map<UUID, List<Achievement>> bySection = new HashMap<>();
         for (Achievement a : allAchievements) {
             for (Section s : a.getSections()) {
@@ -71,7 +84,7 @@ public class ProfileAchievementsService {
         Comparator<AchievementCardDto> cmp = Comparator
                 .comparingInt((AchievementCardDto c) -> {
                     if (c.awarded) return 0;
-                    return c.percentDone > 0 ? 1 : 2;
+                    return c.currentStep > 0 ? 1 : 2;
                 })
                 .thenComparingDouble(c -> c.rarityPercent)
                 .thenComparing(c -> c.title, String.CASE_INSENSITIVE_ORDER);
@@ -83,14 +96,24 @@ public class ProfileAchievementsService {
             List<AchievementCardDto> cards = list.stream()
                     .map(a -> {
                         UUID aid = a.getId();
-                        double p = progress.getOrDefault(aid, 0.0);
                         boolean has = awarded.contains(aid);
                         double r = rarity.apply(aid);
+
+                        UserAchievementProgress up = progress.get(aid);
+                        int total = (up != null) ? up.getTotalSteps()
+                                : totalStepsByAch.getOrDefault(aid, 1);
+                        int curr = (up != null) ? up.getCurrentStep() : 0;
+
+                        // safety: total >= 1
+                        total = Math.max(1, total);
+                        curr = Math.min(curr, total);
+
                         return new AchievementCardDto(
                                 aid,
                                 a.getTitle(),
                                 assetUrl(a.getIcon()),
-                                p,
+                                curr,
+                                total,
                                 has,
                                 r
                         );
@@ -113,4 +136,3 @@ public class ProfileAchievementsService {
         return new ProfileViewDto(userDto, unlockedCount, sectionDtos);
     }
 }
-

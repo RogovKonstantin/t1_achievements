@@ -2,7 +2,6 @@ package com.t1.achievements.util;
 
 import com.t1.achievements.entity.*;
 import com.t1.achievements.entity.Achievement.Visibility;
-import com.t1.achievements.entity.UserAchievement.Method;
 import com.t1.achievements.repository.*;
 import com.t1.achievements.service.AssetStorageService;
 import io.minio.ObjectWriteResponse;
@@ -390,63 +389,76 @@ public class DataInitializer {
             for (AchSpec spec : specs) {
                 Achievement a = achByCode.get(spec.code());
 
-                double minRatio = 1.0;
-                int sumCapped = 0;
                 int sumRequired = 0;
+                int sumCapped = 0;
 
                 for (Crit c : spec.criteria()) {
                     ActivityType t = actByCode.get(c.activityCode());
-                    Instant threshold = (c.withinDays() == null) ? Instant.EPOCH
+                    Instant threshold = (c.withinDays() == null)
+                            ? Instant.EPOCH
                             : Instant.now().minus(Duration.ofDays(c.withinDays()));
+
                     long cnt = userLogs.stream()
                             .filter(l -> l.getActivityType().getId().equals(t.getId()))
                             .filter(l -> l.getOccurredAt().isAfter(threshold))
                             .count();
 
-                    double ratio = Math.min(1.0, (double) cnt / c.required());
-                    minRatio = Math.min(minRatio, ratio);
-                    sumCapped += Math.min((int) cnt, c.required());
-                    sumRequired += c.required();
+                    int required = c.required();
+                    sumRequired += required;
+                    sumCapped += (int) Math.min(cnt, required);
                 }
 
-                int percent = (int) Math.round(minRatio * 100.0);
+                int totalSteps = Math.max(1, sumRequired);
+                int currentStep = Math.min(sumCapped, totalSteps);
+
+                boolean shouldAward = false;
+                UserAchievement.Method method = spec.manual()
+                        ? UserAchievement.Method.MANUAL
+                        : UserAchievement.Method.AUTO;
+
+                if (currentStep >= totalSteps) {
+                    // Всегда награждаем, если шаги закрыты — даже для manual (для seed-данных это корректнее).
+                    shouldAward = true;
+                } else if (spec.manual()) {
+                    // Случайная ручная выдача как раньше, НО теперь выравниваем прогресс
+                    if (rnd.nextDouble() < 0.08) {
+                        shouldAward = true;
+                        currentStep = totalSteps; // выравниваем, чтобы awarded не конфликтовал со шкалой
+                    }
+                }
+
+                // сохраняем прогресс уже с финальными currentStep/totalSteps
                 progressRepo.save(
                         UserAchievementProgress.builder()
                                 .user(u)
                                 .achievement(a)
-                                .currentCount(sumCapped)
-                                .percentDone((double) percent)
+                                .currentStep(currentStep)
+                                .totalSteps(totalSteps)
                                 .updatedAt(Instant.now())
                                 .build()
                 );
 
-                boolean isManual = spec.manual();
-                if (!isManual && percent >= 100) {
-                    userAchRepo.save(
-                            UserAchievement.builder()
-                                    .user(u)
-                                    .achievement(a)
-                                    .method(Method.AUTO)
-                                    .awardedAt(Instant.now().minusSeconds(rnd.nextInt(60 * 60 * 24 * 60)))
-                                    .evidence(Map.of("reason", "auto_by_criteria"))
+                // создаём награду, если нужно
+                if (shouldAward) {
+                    UserAchievement.UserAchievementBuilder b = UserAchievement.builder()
+                            .user(u)
+                            .achievement(a)
+                            .method(method)
+                            .awardedAt(Instant.now().minusSeconds(rnd.nextInt(60 * 60 * 24 * 90)))
+                            .evidence(Map.of("reason", method == UserAchievement.Method.AUTO
+                                    ? "auto_by_criteria"
+                                    : "manual_seed"));
 
-                                    .build()
-                    );
-                }
-                if (isManual && rnd.nextDouble() < 0.08) {
-                    userAchRepo.save(
-                            UserAchievement.builder()
-                                    .user(u)
-                                    .achievement(a)
-                                    .method(Method.MANUAL)
-                                    .awardedBy(sample(userRepo.findAll().subList(0, 3))) // кто-то из админов
-                                    .awardedAt(Instant.now().minusSeconds(rnd.nextInt(60 * 60 * 24 * 90)))
-                                    .evidence(Map.of("reason", "auto_by_criteria"))
-                                    .build()
-                    );
+                    if (method == UserAchievement.Method.MANUAL) {
+                        // кого-то из первых админов
+                        b.awardedBy(sample(userRepo.findAll().subList(0, 3)));
+                    }
+
+                    userAchRepo.save(b.build());
                 }
             }
         }
     }
+
 }
 
