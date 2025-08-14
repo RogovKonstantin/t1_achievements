@@ -1,6 +1,8 @@
 package com.t1.achievements.controller;
 
 import com.t1.achievements.controller.api.AchievementApi;
+import com.t1.achievements.dto.AchievementDetailDto;
+import com.t1.achievements.service.AchievementViewService;
 import com.t1.achievements.service.ProfileAchievementsService;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +18,15 @@ import java.util.UUID;
 
 public class AchievementController implements AchievementApi {
     private final ProfileAchievementsService profileAchievementsService;
+    private final AchievementViewService service;
 
     @Override
     public ProfileAchievementsService.ProfileViewDto getUserAchievements(@PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId) {
         return profileAchievementsService.getProfileView(userId);
+    }
+    @Override
+    public AchievementDetailDto getAchievementForUser(@NotNull UUID achievementId, @NotNull UUID userId) {
+        return service.getForUser(achievementId, userId);
     }
 }
 

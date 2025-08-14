@@ -33,6 +33,8 @@ public class Achievement {
     private Asset icon;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "banner_asset_id")
     private Asset banner;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "animation_id")
+    private Asset animation;
 
     @Column(nullable = false) private Boolean active = true;
 

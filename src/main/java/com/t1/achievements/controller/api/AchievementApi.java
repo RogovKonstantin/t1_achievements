@@ -1,9 +1,6 @@
 package com.t1.achievements.controller.api;
 
-import com.t1.achievements.dto.AchievementCategoriesDto;
-import com.t1.achievements.dto.PageResponse;
-import com.t1.achievements.dto.UpdateCategoriesRequest;
-import com.t1.achievements.dto.UserListItemDto;
+import com.t1.achievements.dto.*;
 import com.t1.achievements.exception.StatusResponse;
 import com.t1.achievements.service.ProfileAchievementsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,4 +32,8 @@ public interface AchievementApi {
     ProfileAchievementsService.ProfileViewDto getUserAchievements(
             @PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId);
 
+    @Operation(summary = "Детали ачивки для конкретного пользователя (без баннера/иконки, с анимацией)")
+    @GetMapping("details/{achievementId}/{userId}")
+    AchievementDetailDto getAchievementForUser(@PathVariable @NotNull UUID achievementId,
+                                               @PathVariable @NotNull UUID userId);
 }

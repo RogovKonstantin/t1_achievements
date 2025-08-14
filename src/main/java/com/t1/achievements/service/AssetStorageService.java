@@ -62,6 +62,19 @@ public class AssetStorageService {
                         .expiry((int) ttl.toSeconds())
                         .build());
     }
+    public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
+        try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
+            return minio.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectKey)
+                            .stream(in, bytes.length, -1)
+                            .contentType(contentType)
+                            .build()
+            );
+        }
+    }
+
 
 }
 

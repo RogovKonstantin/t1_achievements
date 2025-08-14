@@ -8,6 +8,7 @@ import io.minio.ObjectWriteResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -115,7 +116,14 @@ public class DataInitializer {
 
         Map<String, Asset> icons = new HashMap<>();
         Map<String, Asset> banners = new HashMap<>();
-
+        Map<String, Asset> animations = new HashMap<>();
+        byte[] gifBytes;
+        {
+            var res = new ClassPathResource("icons8-favicon.gif");
+            try (var in = res.getInputStream()) {
+                gifBytes = in.readAllBytes();
+            }
+        }
         for (String code : List.of(
                 "ZNATOK", "CYBER_CHAMPION", "CYBER_MASTER", "MUZYKANT1", "PODPISANT",
                 "PROFILE_100", "TEAM_YEAR_2", "TEAM_YEAR_3", "TEAM_YEAR_4",
@@ -124,6 +132,8 @@ public class DataInitializer {
         )) {
             String iconKey = "icons/%s.png".formatted(code);
             byte[] iconBytes = storage.generateSquarePng(256, rnd.nextBoolean());
+            String animKey = "animations/%s.gif".formatted(code);
+            ObjectWriteResponse animResp = storage.upload(gifBytes, animKey, "image/gif");
             ObjectWriteResponse iconResp = storage.uploadPng(iconBytes, iconKey);
 
             Asset icon = assetRepo.save(Asset.builder()
@@ -149,7 +159,15 @@ public class DataInitializer {
                     .etag(bannerResp.etag())
                     .build());
             banners.put(code, banner);
-
+            Asset anim = assetRepo.save(Asset.builder()
+                    .bucket(bucket)
+                    .objectKey(animKey)
+                    .versionId(Optional.ofNullable(animResp.versionId()).orElse(""))
+                    .contentType("image/gif")
+                    .sizeBytes((long) gifBytes.length)
+                    .etag(animResp.etag())
+                    .build());
+            animations.put(code, anim);
         }
 
         Map<String, ActivityType> act = saveActivityTypes(
@@ -238,6 +256,7 @@ public class DataInitializer {
                     .visibility(Visibility.PUBLIC)
                     .icon(icons.get(spec.code()))
                     .banner(banners.get(spec.code()))
+                    .animation(animations.get(spec.code()))
                     .active(true)
                     .createdBy(sample(admins))
                     .build();

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface UserAchievementRepository extends JpaRepository<UserAchievement, UUID> {
@@ -23,4 +24,12 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
            group by ua.achievement.id
            """)
     List<AwardStat> countAwardedByAchievement();
+    Optional<UserAchievement> findFirstByUserIdAndAchievementId(UUID userId, UUID achievementId);
+
+    @Query("""
+           select count(distinct ua.user.id)
+           from UserAchievement ua
+           where ua.achievement.id = :achievementId
+           """)
+    long countAwardedByAchievementId(@Param("achievementId") UUID achievementId);
 }
