@@ -1,5 +1,9 @@
 package com.t1.achievements.controller.api;
 
+import com.t1.achievements.dto.AchievementCategoriesDto;
+import com.t1.achievements.dto.PageResponse;
+import com.t1.achievements.dto.UpdateCategoriesRequest;
+import com.t1.achievements.dto.UserListItemDto;
 import com.t1.achievements.exception.StatusResponse;
 import com.t1.achievements.service.ProfileAchievementsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,9 +13,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 

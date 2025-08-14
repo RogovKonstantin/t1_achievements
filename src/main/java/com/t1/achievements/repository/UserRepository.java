@@ -4,6 +4,8 @@ package com.t1.achievements.repository;
 import com.t1.achievements.entity.User;
 import org.springframework.context.annotation.Role;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,5 +21,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<Object[]> countHoldersGrouped();
     @Query("select count(u) from User u where u.active = true")
     long countActive();
+    @Query("""
+           select u from UserAchievement ua
+           join ua.user u
+           where ua.achievement.id = :achievementId
+           order by u.fullName asc
+           """)
+    Page<User> findHoldersByAchievementId(@Param("achievementId") UUID achievementId, Pageable pageable);
+
+    // NEW: базовый список активных пользователей
+    Page<User> findByActiveTrue(Pageable pageable);
+
 }
 
