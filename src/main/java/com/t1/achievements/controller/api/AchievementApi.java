@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.util.UUID;
 
 @Tag(name = "achievements", description = "API для управления ачивками")
-@RequestMapping("/user")
+@RequestMapping("/achievements")
 public interface AchievementApi {
 
     @Operation(summary = "Получить ачивки пользователя")
@@ -27,7 +27,7 @@ public interface AchievementApi {
             @ApiResponse(responseCode = "400", description = "Некорректный ID",
                     content = @Content(schema = @Schema(implementation = StatusResponse.class)))
     })
-    @GetMapping("/achievements/{userId}")
+    @GetMapping("/user/{userId}")
     ProfileAchievementsService.ProfileViewDto getUserAchievements(
             @PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId);
 
