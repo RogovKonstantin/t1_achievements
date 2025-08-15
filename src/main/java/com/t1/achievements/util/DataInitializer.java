@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -113,63 +115,6 @@ public class DataInitializer {
                 )
         );
 
-
-        Map<String, Asset> icons = new HashMap<>();
-        Map<String, Asset> banners = new HashMap<>();
-        Map<String, Asset> animations = new HashMap<>();
-        byte[] gifBytes;
-        {
-            var res = new ClassPathResource("icons8-favicon.gif");
-            try (var in = res.getInputStream()) {
-                gifBytes = in.readAllBytes();
-            }
-        }
-        for (String code : List.of(
-                "ZNATOK", "CYBER_CHAMPION", "CYBER_MASTER", "MUZYKANT1", "PODPISANT",
-                "PROFILE_100", "TEAM_YEAR_2", "TEAM_YEAR_3", "TEAM_YEAR_4",
-                "VAC_BALANCE", "HOST", "CASE_MAKER", "BUGATHON", "EDU_ARCH",
-                "RESEARCHER", "AUTHOR_T1", "IT_CAMP"
-        )) {
-            String iconKey = "icons/%s.png".formatted(code);
-            byte[] iconBytes = storage.generateSquarePng(256, rnd.nextBoolean());
-            String animKey = "animations/%s.gif".formatted(code);
-            ObjectWriteResponse animResp = storage.upload(gifBytes, animKey, "image/gif");
-            ObjectWriteResponse iconResp = storage.uploadPng(iconBytes, iconKey);
-
-            Asset icon = assetRepo.save(Asset.builder()
-                    .bucket(bucket)
-                    .objectKey(iconKey)
-                    .versionId(Optional.ofNullable(iconResp.versionId()).orElse(""))
-                    .contentType("image/png")
-                    .sizeBytes((long) iconBytes.length)
-                    .etag(iconResp.etag())
-                    .build());
-            icons.put(code, icon);
-
-            String bannerKey = "banners/%s.png".formatted(code);
-            byte[] bannerBytes = storage.generateSquarePng(360, rnd.nextBoolean()); // простой заглушкой
-            ObjectWriteResponse bannerResp = storage.uploadPng(bannerBytes, bannerKey);
-
-            Asset banner = assetRepo.save(Asset.builder()
-                    .bucket(bucket)
-                    .objectKey(bannerKey)
-                    .versionId(Optional.ofNullable(bannerResp.versionId()).orElse(""))
-                    .contentType("image/png")
-                    .sizeBytes((long) bannerBytes.length)
-                    .etag(bannerResp.etag())
-                    .build());
-            banners.put(code, banner);
-            Asset anim = assetRepo.save(Asset.builder()
-                    .bucket(bucket)
-                    .objectKey(animKey)
-                    .versionId(Optional.ofNullable(animResp.versionId()).orElse(""))
-                    .contentType("image/gif")
-                    .sizeBytes((long) gifBytes.length)
-                    .etag(animResp.etag())
-                    .build());
-            animations.put(code, anim);
-        }
-
         Map<String, ActivityType> act = saveActivityTypes(
                 List.of(
                         new ActivityType(null, "LMS_OBLIG_CLEAR", "Нет просроченных обязательных курсов", "Снято ограничение в LMS", "LMS", true, Instant.now()),
@@ -209,15 +154,9 @@ public class DataInitializer {
                 new AchSpec("PROFILE_100", "Идеальный профиль", "100% заполненный профиль", false,
                         List.of("PROFILE"),
                         List.of(new Crit("PROFILE_100", 1, null))),
-                new AchSpec("TEAM_YEAR_2", "Год в команде 2", "2 полных года в компании", false,
+                new AchSpec("TEAM_YEAR_1", "Год в команде 2", "2 полных года в компании", false,
                         List.of("ANNIV"),
                         List.of(new Crit("WORK_YEAR", 2, null))),
-                new AchSpec("TEAM_YEAR_3", "Год в команде 3", "3 полных года в компании", false,
-                        List.of("ANNIV"),
-                        List.of(new Crit("WORK_YEAR", 3, null))),
-                new AchSpec("TEAM_YEAR_4", "Год в команде 4", "4 полных года в компании", false,
-                        List.of("ANNIV"),
-                        List.of(new Crit("WORK_YEAR", 4, null))),
                 new AchSpec("VAC_BALANCE", "В балансе", "Остаток отпуска ≤5 дней на конец периода", false,
                         List.of("VAC"),
                         List.of(new Crit("VAC_BALANCE_OK", 1, 365))),
@@ -246,24 +185,33 @@ public class DataInitializer {
 
         Map<String, Achievement> achByCode = new LinkedHashMap<>();
         for (AchSpec spec : specs) {
+            String code = spec.code();
+
+            byte[] pngBytes = readResourceRequired(code + ".png");
+            byte[] gifBytes = readResourceRequired(code + ".gif");
+
+            Asset icon = uploadAndSaveAsset(pngBytes, "icons/" + code + ".png", "image/png");
+            Asset banner = uploadAndSaveAsset(pngBytes, "banners/" + code + ".png", "image/png");
+            Asset animation = uploadAndSaveAsset(gifBytes, "animations/" + code + ".gif", "image/gif");
+
             Achievement a = Achievement.builder()
-                    .code(spec.code())
+                    .code(code)
                     .title(spec.title())
                     .shortDescription(spec.shortDesc())
                     .descriptionMd(spec.shortDesc())
                     .points(rnd.nextInt(6) * 10)
                     .repeatable(false)
                     .visibility(Visibility.PUBLIC)
-                    .icon(icons.get(spec.code()))
-                    .banner(banners.get(spec.code()))
-                    .animation(animations.get(spec.code()))
+                    .icon(icon)
+                    .banner(banner)
+                    .animation(animation)
                     .active(true)
                     .createdBy(sample(admins))
                     .build();
 
             a.setSections(spec.sectionCodes().stream().map(sections::get).collect(Collectors.toSet()));
             a = achievementRepo.save(a);
-            achByCode.put(spec.code(), a);
+            achByCode.put(code, a);
 
             for (Crit c : spec.criteria()) {
                 criterionRepo.save(AchievementCriterion.builder()
@@ -293,6 +241,7 @@ public class DataInitializer {
                 }
             }
         }
+
 
         List<User> allUsers = new ArrayList<>();
         allUsers.addAll(admins);
@@ -389,7 +338,7 @@ public class DataInitializer {
                 .occurredAt(when)
                 .sourceSystem(type.getSourceSystem() == null ? "" : type.getSourceSystem())
                 .sourceEventId(UUID.randomUUID().toString())
-                .payload(Map.of("note", "seed", "rand", rnd.nextInt(1000))) // любой мелкий JSON
+                .payload(Map.of("note", "seed", "rand", rnd.nextInt(1000)))
                 .build();
     }
 
@@ -436,17 +385,14 @@ public class DataInitializer {
                         : UserAchievement.Method.AUTO;
 
                 if (currentStep >= totalSteps) {
-                    // Всегда награждаем, если шаги закрыты — даже для manual (для seed-данных это корректнее).
                     shouldAward = true;
                 } else if (spec.manual()) {
-                    // Случайная ручная выдача как раньше, НО теперь выравниваем прогресс
                     if (rnd.nextDouble() < 0.08) {
                         shouldAward = true;
-                        currentStep = totalSteps; // выравниваем, чтобы awarded не конфликтовал со шкалой
+                        currentStep = totalSteps;
                     }
                 }
 
-                // сохраняем прогресс уже с финальными currentStep/totalSteps
                 progressRepo.save(
                         UserAchievementProgress.builder()
                                 .user(u)
@@ -457,7 +403,6 @@ public class DataInitializer {
                                 .build()
                 );
 
-                // создаём награду, если нужно
                 if (shouldAward) {
                     UserAchievement.UserAchievementBuilder b = UserAchievement.builder()
                             .user(u)
@@ -469,7 +414,6 @@ public class DataInitializer {
                                     : "manual_seed"));
 
                     if (method == UserAchievement.Method.MANUAL) {
-                        // кого-то из первых админов
                         b.awardedBy(sample(userRepo.findAll().subList(0, 3)));
                     }
 
@@ -477,6 +421,33 @@ public class DataInitializer {
                 }
             }
         }
+    }
+    private byte[] readResourceRequired(String resourceName) throws IOException {
+        ClassPathResource res = new ClassPathResource(resourceName);
+        if (!res.exists()) {
+            throw new IOException("Не найден ресурс в classpath: " + resourceName +
+                    " (ожидался, т.к. используется для замены заглушек)");
+        }
+        try (InputStream in = res.getInputStream()) {
+            return in.readAllBytes();
+        }
+    }
+
+    private Asset uploadAndSaveAsset(byte[] bytes, String objectKey, String contentType) throws Exception {
+        ObjectWriteResponse resp;
+        if ("image/png".equals(contentType)) {
+            resp = storage.uploadPng(bytes, objectKey);
+        } else {
+            resp = storage.upload(bytes, objectKey, contentType);
+        }
+        return assetRepo.save(Asset.builder()
+                .bucket(bucket)
+                .objectKey(objectKey)
+                .versionId(Optional.ofNullable(resp.versionId()).orElse(""))
+                .contentType(contentType)
+                .sizeBytes((long) bytes.length)
+                .etag(resp.etag())
+                .build());
     }
 
 }

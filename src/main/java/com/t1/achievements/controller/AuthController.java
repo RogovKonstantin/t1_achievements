@@ -38,10 +38,10 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req) {
-        var auth = new UsernamePasswordAuthenticationToken(req.username(), req.password());
-        authManager.authenticate(auth);
+        var authToken = new UsernamePasswordAuthenticationToken(req.username(), req.password());
+        var auth = authManager.authenticate(authToken);
 
-        UserDetails user = uds.loadUserByUsername(req.username());
+        UserDetails user = (UserDetails) auth.getPrincipal();
 
         List<String> roles = user.getAuthorities().stream()
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
