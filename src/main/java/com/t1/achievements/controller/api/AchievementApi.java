@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -20,7 +22,6 @@ import java.util.UUID;
 @RequestMapping("/achievements")
 public interface AchievementApi {
 
-    @Operation(summary = "Получить ачивки пользователя")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "404", description = "Пользователь не найден",
@@ -28,11 +29,21 @@ public interface AchievementApi {
             @ApiResponse(responseCode = "400", description = "Некорректный ID",
                     content = @Content(schema = @Schema(implementation = StatusResponse.class)))
     })
+
+    @Operation(summary = "Профиль пользователя с полученными и начатыми ачивками")
     @GetMapping("/user/{userId}")
     ProfileAchievementsService.ProfileViewDto getUserAchievements(
             @PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId);
 
-    @Operation(summary = "Детали ачивки для конкретного пользователя (без баннера/иконки, с анимацией)")
+    @Operation(summary = "Все ачивки по секциям (userId из токена), карта ачивок")
+    @GetMapping("/map")
+    ProfileAchievementsService.SectionsViewDto getMyAchievements(
+            @AuthenticationPrincipal UserDetails principal);
+
+
+
+
+    @Operation(summary = "Детали ачивки для конкретного пользователя")
     @GetMapping("details/{achievementId}/{userId}")
     AchievementDetailDto getAchievementForUser(@PathVariable @NotNull UUID achievementId,
                                                @PathVariable @NotNull UUID userId);
