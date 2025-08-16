@@ -77,7 +77,7 @@ public class DataInitializer {
                             .department("IT")
                             .grade(5)
                             .active(true)
-                            .roles(new HashSet<>(Set.of(admin, userRole)))
+                            .role(admin)   // <<< только одна роль
                             .hireDate(LocalDate.now().minusYears(3 + i))
                             .avatar(createAvatar("admin" + i))
                             .build()
@@ -89,14 +89,14 @@ public class DataInitializer {
             users.add(userRepo.save(
                     User.builder()
                             .username("user%03d".formatted(i))
-                            .password(hashed) // ← уже зашифровано
+                            .password(hashed)
                             .fullName("User %03d".formatted(i))
                             .email("user%03d@t1.local".formatted(i))
                             .position(sample(List.of("Developer", "Analyst", "QA", "DevOps", "PM", "Designer")))
                             .department(sample(List.of("R&D", "Delivery", "HR", "Marketing", "Finance", "Ops")))
                             .grade(1 + rnd.nextInt(5))
                             .active(true)
-                            .roles(new HashSet<>(Set.of(userRole)))
+                            .role(userRole)
                             .hireDate(LocalDate.now().minusDays(200 + rnd.nextInt(1200)))
                             .avatar(createAvatar("user" + i))
                             .build()
@@ -105,13 +105,13 @@ public class DataInitializer {
 
         Map<String, Section> sections = saveSections(
                 Map.of(
-                        "LEARN", new Section(null, "LEARN", "Обучение", "Курсы, знания", 10, true, Instant.now()),
-                        "CYBER", new Section(null, "CYBER", "Кибертурниры", "Киберспорт", 20, true, Instant.now()),
-                        "COMMUNITY", new Section(null, "COMMUNITY", "Сообщество", "Ивенты, статьи, волонтёрство", 30, true, Instant.now()),
-                        "DOCS", new Section(null, "DOCS", "Документы", "HR-Link, подписи", 40, true, Instant.now()),
-                        "PROFILE", new Section(null, "PROFILE", "Профиль", "Заполнение профиля", 50, true, Instant.now()),
-                        "ANNIV", new Section(null, "ANNIV", "Стаж", "Годы в команде", 60, true, Instant.now()),
-                        "VAC", new Section(null, "VAC", "Отпуск", "Баланс отпуска", 70, true, Instant.now())
+                        "BASE",     new Section(null, "BASE",     "Это база", "Обязательные основы", 10, true, Instant.now()),
+                        "SPORT",    new Section(null, "SPORT",    "Спорт", "Киберспорт и активность", 20, true, Instant.now()),
+                        "SPEAK",    new Section(null, "SPEAK",    "Выступление на конференциях, преподавание, фасилитации",
+                                "Публичные выступления, наставничество, фасилитация", 30, true, Instant.now()),
+                        "EXPERT",   new Section(null, "EXPERT",   "Экспертиза", "Кейсы, багатоны, образование, исследования", 40, true, Instant.now()),
+                        "AUTHOR",   new Section(null, "AUTHOR",   "Автор публикаций", "Статьи и публикации", 50, true, Instant.now()),
+                        "PROJECTS", new Section(null, "PROJECTS", "Участие в проектах", "Волонтёрство и спец-проекты", 60, true, Instant.now())
                 )
         );
 
@@ -136,52 +136,43 @@ public class DataInitializer {
         );
 
         List<AchSpec> specs = List.of(
-                new AchSpec("ZNATOK", "Знаток", "Нет просроченных обязательных курсов", false,
-                        List.of("LEARN"),
-                        List.of(new Crit("LMS_OBLIG_CLEAR", 1, null))),
-                new AchSpec("CYBER_CHAMPION", "Кибер чемпион", "Победа в кибертурнире", true,
-                        List.of("CYBER"),
-                        List.of(new Crit("CYBER_TOURNAMENT_WIN", 1, null))),
-                new AchSpec("CYBER_MASTER", "Кибер мастер", "Призовое место в кибертурнире", true,
-                        List.of("CYBER"),
-                        List.of(new Crit("CYBER_TOURNAMENT_PRIZE", 1, null))),
-                new AchSpec("MUZYKANT1", "МузыканТ1", "Участие в музыкальных группах и выступлениях", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("MUSIC_GROUP_PERF", 1, null))),
-                new AchSpec("PODPISANT", "Подписант", "12 месяцев подряд без долга по подписям", false,
-                        List.of("DOCS"),
-                        List.of(new Crit("HRLINK_MONTH_CLEAR", 12, 365))),
-                new AchSpec("PROFILE_100", "Идеальный профиль", "100% заполненный профиль", false,
-                        List.of("PROFILE"),
-                        List.of(new Crit("PROFILE_100", 1, null))),
-                new AchSpec("TEAM_YEAR_1", "Год в команде 2", "2 полных года в компании", false,
-                        List.of("ANNIV"),
-                        List.of(new Crit("WORK_YEAR", 2, null))),
-                new AchSpec("VAC_BALANCE", "В балансе", "Остаток отпуска ≤5 дней на конец периода", false,
-                        List.of("VAC"),
-                        List.of(new Crit("VAC_BALANCE_OK", 1, 365))),
-                new AchSpec("HOST", "Ведущий", "Ведущий внутренних мероприятий", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("INTERNAL_EVENT_HOST", 1, null))),
-                new AchSpec("CASE_MAKER", "Кейс-мейкер", "Разработка кейсов для хакатонов", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("HACK_CASE_AUTHOR", 1, null))),
-                new AchSpec("BUGATHON", "Багатончик", "Участие в багатоне", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("BUGATHON_PARTICIPANT", 1, null))),
-                new AchSpec("EDU_ARCH", "Архитектор образования", "Помощь в разработке обучающих программ", true,
-                        List.of("LEARN", "COMMUNITY"),
-                        List.of(new Crit("EDU_ARCH_HELP", 1, null))),
-                new AchSpec("RESEARCHER", "Исследователь", "Участие в 5 фокус-группах и исследованиях", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("FOCUS_GROUP", 5, 365))),
-                new AchSpec("AUTHOR_T1", "Автор Т1", "Первая статья в профильном издании", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("PRO_ARTICLE", 1, null))),
-                new AchSpec("IT_CAMP", "ИТ-Лагерь", "Активное участие/помощь в проекте", true,
-                        List.of("COMMUNITY"),
-                        List.of(new Crit("IT_CAMP_VOL", 1, null)))
+                new AchSpec("ZNATOK",       "Знаток",             "Нет просроченных обязательных курсов", false,
+                        List.of("BASE"),     List.of(new Crit("LMS_OBLIG_CLEAR", 1, null))),
+                new AchSpec("PODPISANT",    "Подписант",          "12 месяцев подряд без долга по подписям", false,
+                        List.of("BASE"),     List.of(new Crit("HRLINK_MONTH_CLEAR", 12, 365))),
+                new AchSpec("PROFILE_100",  "Идеальный профиль",  "100% заполненный профиль", false,
+                        List.of("BASE"),     List.of(new Crit("PROFILE_100", 1, null))),
+                new AchSpec("TEAM_YEAR_1",  "Год в команде 1",    "полный год в компании", false,
+                        List.of("BASE"),     List.of(new Crit("WORK_YEAR", 2, null))),
+                new AchSpec("VAC_BALANCE",  "В балансе",          "Остаток отпуска ≤5 дней на конец периода", false,
+                        List.of("BASE"),     List.of(new Crit("VAC_BALANCE_OK", 1, 365))),
+
+                new AchSpec("CYBER_CHAMPION","Кибер чемпион",     "Победа в кибертурнире", true,
+                        List.of("SPORT"),    List.of(new Crit("CYBER_TOURNAMENT_WIN", 1, null))),
+                new AchSpec("CYBER_MASTER", "Кибер мастер",       "Призовое место в кибертурнире", true,
+                        List.of("SPORT"),    List.of(new Crit("CYBER_TOURNAMENT_PRIZE", 1, null))),
+                new AchSpec("MUZYKANT1",    "МузыканТ1",          "Участие в музыкальных группах и выступлениях", true,
+                        List.of("SPORT"),    List.of(new Crit("MUSIC_GROUP_PERF", 1, null))),
+
+                new AchSpec("HOST",         "Ведущий",            "Ведущий внутренних мероприятий", true,
+                        List.of("SPEAK"),    List.of(new Crit("INTERNAL_EVENT_HOST", 1, null))),
+
+                new AchSpec("CASE_MAKER",   "Кейс-мейкер",        "Разработка кейсов для хакатонов", true,
+                        List.of("EXPERT"),   List.of(new Crit("HACK_CASE_AUTHOR", 1, null))),
+                new AchSpec("BUGATHON",     "Багатончик",         "Участие в багатоне", true,
+                        List.of("EXPERT"),   List.of(new Crit("BUGATHON_PARTICIPANT", 1, null))),
+                new AchSpec("EDU_ARCH",     "Архитектор образования", "Помощь в разработке обучающих программ", true,
+                        List.of("EXPERT"),   List.of(new Crit("EDU_ARCH_HELP", 1, null))),
+                new AchSpec("RESEARCHER",   "Исследователь",      "Участие в 5 фокус-группах и исследованиях", true,
+                        List.of("EXPERT"),   List.of(new Crit("FOCUS_GROUP", 5, 365))),
+
+                new AchSpec("AUTHOR_T1",    "Автор Т1",           "Первая статья в профильном издании", true,
+                        List.of("AUTHOR"),   List.of(new Crit("PRO_ARTICLE", 1, null))),
+
+                new AchSpec("IT_CAMP",      "ИТ-Лагерь",          "Активное участие/помощь в проекте", true,
+                        List.of("PROJECTS"), List.of(new Crit("IT_CAMP_VOL", 1, null)))
         );
+
 
         Map<String, Achievement> achByCode = new LinkedHashMap<>();
         for (AchSpec spec : specs) {

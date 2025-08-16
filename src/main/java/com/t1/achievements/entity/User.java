@@ -37,14 +37,13 @@ public class User {
     private String email;
     private String phone;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "avatar_asset_id")
-    private Asset avatar;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;   // <<< одна роль
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_asset_id")
+    private Asset avatar;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -55,4 +54,5 @@ public class User {
 
     @PreUpdate void touch() { this.updatedAt = Instant.now(); }
 }
+
 

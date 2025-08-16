@@ -33,6 +33,8 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // com.t1.achievements.config.SecurityConfig
+
     @Bean
     @Order(2)
     public SecurityFilterChain apiChain(HttpSecurity http) throws Exception {
@@ -42,10 +44,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/assets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/favicon.ico").permitAll()
-                        .requestMatchers(
-                                "/auth/login",
-                                "/error"
-                        ).permitAll()
+                        .requestMatchers("/auth/login", "/error").permitAll()
+
+                        // <<< только админ может в /admin/**
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -53,6 +56,7 @@ public class SecurityConfig {
                 .httpBasic(b -> b.disable());
         return http.build();
     }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {

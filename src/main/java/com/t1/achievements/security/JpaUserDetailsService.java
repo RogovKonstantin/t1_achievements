@@ -16,14 +16,13 @@ public class JpaUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         var u = userRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-        var auths = u.getRoles().stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getCode()))
-                .map(GrantedAuthority.class::cast)
-                .toList();
+
+        var authority = new SimpleGrantedAuthority("ROLE_" + u.getRole().getCode());
         return org.springframework.security.core.userdetails.User
                 .withUsername(u.getUsername())
                 .password(u.getPassword())
-                .authorities(auths)
+                .authorities(authority)
                 .build();
     }
+
 }

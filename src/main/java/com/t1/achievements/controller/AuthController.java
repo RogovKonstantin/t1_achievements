@@ -14,8 +14,7 @@ import org.springframework.security.authentication.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.security.core.GrantedAuthority;
 import java.util.Map;
 
 @RestController
@@ -29,7 +28,7 @@ public class AuthController {
     private final JwtService jwt;
     private final UserRepository userRepo;
 
-    @Operation(summary = "Вход по логину/паролю", description = "Возвращает JWT с ролями в claim `roles`")
+    @Operation(summary = "Вход по логину/паролю", description = "Возвращает JWT с ролями в claim `role`")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK",
                     content = @Content(mediaType = "application/json",
@@ -38,23 +37,17 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req) {
-        var authToken = new UsernamePasswordAuthenticationToken(req.username(), req.password());
-        var auth = authManager.authenticate(authToken);
-
+        var auth = authManager.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
         UserDetails user = (UserDetails) auth.getPrincipal();
 
-        List<String> roles = user.getAuthorities().stream()
-                .map(a -> a.getAuthority().replace("ROLE_", ""))
-                .toList();
+        String role = user.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring(5)).min((a, b) -> a.equals("ADMIN") ? -1 : 1)
+                .orElse("USER");
 
-        var domainUser = userRepo.findByUsername(req.username()).orElseThrow();
-        Map<String,Object> extra = Map.of(
-                "uid", domainUser.getId().toString(),
-                "fullName", domainUser.getFullName()
-        );
-
-        String token = jwt.generateToken(user, roles, extra);
-        return ResponseEntity.ok(new AuthResponse(token, roles));
+        String token = jwt.generateToken(user, role, Map.of());
+        return ResponseEntity.ok(new AuthResponse(token,role));
     }
 }
 

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@Tag(name = "achievements", description = "API для управления ачивками")
+@Tag(name = "achievements", description = "API для чтения ачивок")
 @RequestMapping("/achievements")
 public interface AchievementApi {
 

@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Set;
 import java.util.UUID;
 
-@Tag(name = "achievements", description = "API для управления ачивками")
-@RequestMapping("/achievements")
+@Tag(name = "achievements", description = "API админа для управления ачивками")
+@RequestMapping("/admin")
 public interface AchievementAdminApi {
 
     @Operation(summary = "Список обладателей ачивки (пагинация)")

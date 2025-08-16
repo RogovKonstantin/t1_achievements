@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 
-@Tag(name = "categories", description = "API категорий/секций ачивок")
+@Tag(name = "categories", description = "API категорий ачивок")
 @RequestMapping("/categories")
 public interface CategoryApi {
 

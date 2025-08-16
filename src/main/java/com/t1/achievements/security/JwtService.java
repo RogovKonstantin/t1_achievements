@@ -25,12 +25,12 @@ public class JwtService {
         this.expirationSec = expirationSec;
     }
 
-    public String generateToken(UserDetails user, List<String> roles, Map<String, Object> extra) {
+    public String generateToken(UserDetails user, String role, Map<String, Object> extra) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .setSubject(user.getUsername())
-                .addClaims(extra)
-                .claim("roles", roles)
+                .addClaims(extra == null ? Map.of() : extra)
+                .claim("role", role)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(now.plusSeconds(expirationSec)))
                 .signWith(key, SignatureAlgorithm.HS256)

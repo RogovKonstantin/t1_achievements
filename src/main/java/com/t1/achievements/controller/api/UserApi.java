@@ -10,7 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-@Tag(name = "users", description = "API пользователей")
+@Tag(name = "users", description = "API чтения пользователей")
 @RequestMapping("/users")
 public interface UserApi {
 
