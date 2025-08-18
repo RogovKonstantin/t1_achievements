@@ -69,10 +69,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
-                "http://localhost:8888",
-                "http://user11.innoca.local:5173",
-                "https://user11.innoca.local",
-                "http://10.10.146.200:8888"
+                "http://localhost:5173",
+                "http://10.10.146.200:3000",
+                "http://10.10.146.200",
+                "https://user11.innoca.local"
         ));
         cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization","Content-Type","Accept","Origin"));
