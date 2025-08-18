@@ -46,7 +46,15 @@ public class AuthController {
                 .map(a -> a.substring(5)).min((a, b) -> a.equals("ADMIN") ? -1 : 1)
                 .orElse("USER");
 
-        String token = jwt.generateToken(user, role, Map.of());
+        var u = userRepo.findByUsername(user.getUsername()).orElseThrow();
+
+        Map<String, Object> extra = Map.of(
+                "id", u.getId().toString(),
+                "fullname", u.getFullName(),
+                "avatar", u.getAvatar() != null ? u.getAvatar().getId().toString() : null
+        );
+
+        String token = jwt.generateToken(user, role, extra);
         return ResponseEntity.ok(new AuthResponse(token,role));
     }
 }
