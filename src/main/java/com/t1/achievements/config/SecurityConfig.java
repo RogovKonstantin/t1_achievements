@@ -70,7 +70,7 @@ public class SecurityConfig {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
                 "http://localhost:8888",
-                "http://user11.innoca.local:8888",
+                "http://user11.innoca.local:5173",
                 "https://user11.innoca.local",
                 "http://10.10.146.200:8888"
         ));
