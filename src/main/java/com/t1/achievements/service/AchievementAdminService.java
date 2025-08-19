@@ -1,6 +1,8 @@
 package com.t1.achievements.service;
 
-import com.t1.achievements.dto.*;
+import com.t1.achievements.dto.AchievementCategoriesDto;
+import com.t1.achievements.dto.SectionShortDto;
+import com.t1.achievements.dto.UserListItemDto;
 import com.t1.achievements.entity.Achievement;
 import com.t1.achievements.entity.Asset;
 import com.t1.achievements.entity.Section;
@@ -27,9 +29,10 @@ public class AchievementAdminService {
     private final AchievementRepository achievementRepo;
     private final SectionRepository sectionRepo;
     private final UserRepository userRepo;
+    private final AssetStorageService assets;
 
     private String assetUrl(Asset a) {
-        return a == null ? null : "/assets/" + a.getId();
+        return assets.publicUrl(a);
     }
 
     @Transactional(readOnly = true)

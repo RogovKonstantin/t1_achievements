@@ -1,4 +1,3 @@
-// com.t1.achievements.service.AchievementViewService
 package com.t1.achievements.service;
 
 import com.t1.achievements.dto.AchievementDetailDto;
@@ -25,8 +24,9 @@ public class AchievementViewService {
     private final UserAchievementRepository userAchRepo;
     private final UserAchievementProgressRepository progressRepo;
     private final AchievementCriterionRepository criterionRepo;
+    private final AssetStorageService assets;
 
-    private String assetUrl(Asset a) { return a == null ? null : "/assets/" + a.getId(); }
+    private String assetUrl(Asset a) { return assets.publicUrl(a); }
 
     @Transactional(readOnly = true)
     public AchievementDetailDto getForUser(UUID achievementId, UUID userId) {
@@ -36,7 +36,6 @@ public class AchievementViewService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Пользователь не найден"));
 
         var awardOpt = userAchRepo.findFirstByUserIdAndAchievementId(userId, achievementId);
-
         var progressOpt = progressRepo.findByUserIdAndAchievementId(userId, achievementId);
 
         int totalSteps;

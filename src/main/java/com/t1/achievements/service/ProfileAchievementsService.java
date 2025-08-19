@@ -20,10 +20,10 @@ public class ProfileAchievementsService {
     private final UserAchievementRepository userAchRepo;
     private final UserAchievementProgressRepository progressRepo;
     private final AchievementCriterionRepository criterionRepo;
+    private final AssetStorageService assets;
 
     private String assetUrl(Asset a) {
-        if (a == null) return null;
-        return "/assets/" + a.getId();
+        return assets.publicUrl(a);
     }
 
     public record UserDto(String fullName, String department, String position, String avatarUrl) {}
@@ -144,6 +144,7 @@ public class ProfileAchievementsService {
 
         return new ProfileViewDto(userDto, unlockedCount, sectionDtos);
     }
+
     @Transactional(readOnly = true)
     public SectionsViewDto getSectionsViewAll(UUID userId) {
         User u = userRepo.findById(userId).orElseThrow();
@@ -162,11 +163,9 @@ public class ProfileAchievementsService {
         Function<UUID, Double> rarity = achId ->
                 100.0 * (awardedCounts.getOrDefault(achId, 0L) / (double) totalUsers);
 
-        // все активные секции и все активные ачивки (без фильтра по прогрессу)
         List<Section> sections = sectionRepo.findByActiveTrueOrderBySortOrderAsc();
         List<Achievement> allAchievements = achievementRepo.findAllActiveWithDeps();
 
-        // totalSteps для ачивок, где нет записи прогресса
         Set<UUID> achIds = allAchievements.stream().map(Achievement::getId).collect(Collectors.toSet());
         Map<UUID, Integer> totalStepsByAch = criterionRepo
                 .sumRequiredByAchievementIds(achIds)
@@ -176,7 +175,6 @@ public class ProfileAchievementsService {
                         r -> Optional.ofNullable(r.getTotalRequired()).orElse(1)
                 ));
 
-        // группировка по секциям
         Map<UUID, List<Achievement>> bySection = new HashMap<>();
         for (Achievement a : allAchievements) {
             for (Section s : a.getSections()) {
@@ -229,6 +227,4 @@ public class ProfileAchievementsService {
     }
 
     public record SectionsViewDto(List<SectionDto> sections) {}
-
-
 }

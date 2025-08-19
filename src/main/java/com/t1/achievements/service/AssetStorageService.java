@@ -1,7 +1,7 @@
 package com.t1.achievements.service;
 
+import com.t1.achievements.entity.Asset;
 import io.minio.*;
-import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,9 +12,10 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.URI;
-import java.time.Duration;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,21 +24,60 @@ public class AssetStorageService {
     private final MinioClient minio;
 
     @Value("${minio.bucket}")
-    private String bucket;
+    private String defaultBucket;
+
+    /**
+     * Базовый публичный URL, по которому доступен MinIO через реверс-прокси.
+     * Пример: http://10.10.146.200/minio
+     */
+    @Value("${minio.publicBaseUrl}")
+    private String publicBaseUrl;
 
     @PostConstruct
     public void ensureBucket() throws Exception {
-        boolean exists = minio.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+        boolean exists = minio.bucketExists(BucketExistsArgs.builder().bucket(defaultBucket).build());
         if (!exists) {
-            minio.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+            minio.makeBucket(MakeBucketArgs.builder().bucket(defaultBucket).build());
         }
     }
+
+    // ---- PUBLIC URL ----
+
+    public String publicUrl(Asset a) {
+        if (a == null) return null;
+        String bucket = a.getBucket() != null ? a.getBucket() : defaultBucket;
+        return buildPublicUrl(bucket, a.getObjectKey());
+    }
+
+    public String buildPublicUrl(String bucket, String objectKey) {
+        String bucketPart = urlEncode(bucket);
+        String keyPart = encodePathPreservingSlashes(objectKey);
+        // http://host/minio/{bucket}/{objectKey}
+        return String.format("%s/%s/%s", trimRight(publicBaseUrl), bucketPart, keyPart);
+    }
+
+    private String trimRight(String s) {
+        return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
+    }
+
+    private String urlEncode(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+    private String encodePathPreservingSlashes(String path) {
+        if (path == null || path.isEmpty()) return "";
+        return Arrays.stream(path.split("/"))
+                .map(seg -> URLEncoder.encode(seg, StandardCharsets.UTF_8))
+                .collect(Collectors.joining("/"));
+    }
+
+    // ---- UPLOAD HELPERS (как были) ----
 
     public ObjectWriteResponse uploadPng(byte[] bytes, String objectKey) throws Exception {
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
             return minio.putObject(
                     PutObjectArgs.builder()
-                            .bucket(bucket)
+                            .bucket(defaultBucket)
                             .object(objectKey)
                             .stream(in, bytes.length, -1)
                             .contentType("image/png")
@@ -45,7 +85,20 @@ public class AssetStorageService {
         }
     }
 
-    public byte[] generateSquarePng(int size, boolean black) throws IOException {
+    public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
+        try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
+            return minio.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(defaultBucket)
+                            .object(objectKey)
+                            .stream(in, bytes.length, -1)
+                            .contentType(contentType)
+                            .build()
+            );
+        }
+    }
+
+    public byte[] generateSquarePng(int size, boolean black) throws Exception {
         BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         g.setColor(black ? Color.BLACK : Color.WHITE);
@@ -55,38 +108,5 @@ public class AssetStorageService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", baos);
         return baos.toByteArray();
-    }
-
-    @Value("${minio.externalEndpoint}")
-    private String externalEndpoint;
-
-    public String presignedGet(String objectKey, Duration ttl) throws Exception {
-        String url = minio.getPresignedObjectUrl(
-                GetPresignedObjectUrlArgs.builder()
-                        .method(Method.GET)
-                        .bucket(bucket)
-                        .object(objectKey)
-                        .expiry((int) ttl.toSeconds())
-                        .build()
-        );
-
-        // меняем хост на внешний
-        URI uri = URI.create(url);
-        return externalEndpoint + uri.getRawPath() +
-                (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
-    }
-
-
-    public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
-        try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
-            return minio.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectKey)
-                            .stream(in, bytes.length, -1)
-                            .contentType(contentType)
-                            .build()
-            );
-        }
     }
 }
