@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 
 @Service
@@ -56,16 +57,25 @@ public class AssetStorageService {
         return baos.toByteArray();
     }
 
+    @Value("${minio.externalEndpoint}")
+    private String externalEndpoint;
+
     public String presignedGet(String objectKey, Duration ttl) throws Exception {
-        return minio.getPresignedObjectUrl(
+        String url = minio.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(Method.GET)
                         .bucket(bucket)
-                        .object(objectKey)   // только относительный путь (например "icons/PODPISANT.png")
+                        .object(objectKey)
                         .expiry((int) ttl.toSeconds())
                         .build()
         );
+
+        // меняем хост на внешний
+        URI uri = URI.create(url);
+        return externalEndpoint + uri.getRawPath() +
+                (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
     }
+
 
     public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
