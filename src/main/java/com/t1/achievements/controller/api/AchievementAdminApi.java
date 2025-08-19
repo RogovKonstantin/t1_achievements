@@ -1,14 +1,17 @@
-// com.t1.achievements.controller.api.AchievementAdminApi
 package com.t1.achievements.controller.api;
 
+import com.t1.achievements.RR.CreateAchievementRequest;
+import com.t1.achievements.RR.CreateSectionRequest;
 import com.t1.achievements.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "achievements", description = "API админа для управления ачивками")
@@ -27,5 +30,20 @@ public interface AchievementAdminApi {
     AchievementCategoriesDto updateCategories(
             @PathVariable UUID achievementId,
             @RequestBody UpdateCategoriesRequest body
+    );
+
+    @Operation(summary = "Создать раздел (категорию)")
+    @PostMapping("/sections")
+    SectionDto createSection(@RequestBody CreateSectionRequest body);
+
+    @Operation(summary = "Список поддерживаемых типов критериев")
+    @GetMapping("/achievements/criteria")
+    List<CriterionTypeDto> listCriterionTypes();
+
+    @Operation(summary = "Создать ачивку")
+    @PostMapping(value = "/achievements", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    AchievementDto createAchievement(
+            @RequestPart("request") CreateAchievementRequest request,
+            @RequestPart(value = "icon", required = false) MultipartFile icon
     );
 }

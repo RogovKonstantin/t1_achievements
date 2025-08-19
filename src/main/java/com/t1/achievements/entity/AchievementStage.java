@@ -1,6 +1,5 @@
 package com.t1.achievements.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 

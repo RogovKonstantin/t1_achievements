@@ -19,10 +19,8 @@ public class UserAchievementProgress {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "achievement_id", nullable = false)
     private Achievement achievement;
 
-    /** Сколько шагов закрыто пользователем */
     @Column(nullable = false) private Integer currentStep = 0;
 
-    /** Сколько шагов требуется всего */
     @Column(nullable = false) private Integer totalSteps = 1;
 
     @Column(nullable = false) private Instant updatedAt = Instant.now();

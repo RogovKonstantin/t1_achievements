@@ -18,8 +18,8 @@ public class AchievementCriterion {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "activity_type_id", nullable = false)
     private ActivityType activityType;
 
-    @Column(nullable = false) private Integer requiredCount;  // >0
-    private Integer withinDays; // null => без окна
+    @Column(nullable = false) private Integer requiredCount;
+    private Integer withinDays;
     private String descriptionOverride;
     @Column(nullable = false) private Integer sortOrder = 100;
 }

@@ -1,4 +1,3 @@
-// com.t1.achievements.controller.api.CategoryApi
 package com.t1.achievements.controller.api;
 
 import com.t1.achievements.dto.SectionShortDto;

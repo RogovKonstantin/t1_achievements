@@ -1,6 +1,7 @@
-// com.t1.achievements.controller.AchievementAdminController
 package com.t1.achievements.controller;
 
+import com.t1.achievements.RR.CreateAchievementRequest;
+import com.t1.achievements.RR.CreateSectionRequest;
 import com.t1.achievements.controller.api.AchievementAdminApi;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.service.AchievementAdminService;
@@ -10,7 +11,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @PreAuthorize("hasRole('ADMIN')")
@@ -29,5 +32,21 @@ public class AchievementAdminController implements AchievementAdminApi {
     @Override
     public AchievementCategoriesDto updateCategories(UUID achievementId, UpdateCategoriesRequest body) {
         return service.updateCategories(achievementId, body == null ? null : body.categoryIds());
+    }
+
+    @Override
+    public SectionDto createSection(CreateSectionRequest body) {
+        return service.createSection(body);
+
+    }
+
+    @Override
+    public List<CriterionTypeDto> listCriterionTypes() {
+        return service.listCriterionTypesForForm();
+    }
+
+    @Override
+    public AchievementDto createAchievement(CreateAchievementRequest request, MultipartFile icon) {
+        return service.createAchievement(request, icon);
     }
 }

@@ -1,4 +1,3 @@
-// com.t1.achievements.service.UserQueryService
 package com.t1.achievements.service;
 
 import com.t1.achievements.dto.PageResponse;

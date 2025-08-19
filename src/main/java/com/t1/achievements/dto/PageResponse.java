@@ -1,4 +1,3 @@
-// com.t1.achievements.dto.PageResponse
 package com.t1.achievements.dto;
 
 import org.springframework.data.domain.Page;

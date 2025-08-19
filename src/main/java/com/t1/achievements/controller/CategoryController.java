@@ -1,4 +1,3 @@
-// com.t1.achievements.controller.CategoryController
 package com.t1.achievements.controller;
 
 import com.t1.achievements.controller.api.CategoryApi;

@@ -40,9 +40,6 @@ public interface AchievementApi {
     ProfileAchievementsService.SectionsViewDto getMyAchievements(
             @AuthenticationPrincipal UserDetails principal);
 
-
-
-
     @Operation(summary = "Детали ачивки для конкретного пользователя")
     @GetMapping("details/{achievementId}/{userId}")
     AchievementDetailDto getAchievementForUser(@PathVariable @NotNull UUID achievementId,

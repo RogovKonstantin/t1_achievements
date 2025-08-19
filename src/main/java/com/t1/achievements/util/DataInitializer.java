@@ -77,7 +77,7 @@ public class DataInitializer {
                             .department("IT")
                             .grade(5)
                             .active(true)
-                            .role(admin)   // <<< только одна роль
+                            .role(admin)
                             .hireDate(LocalDate.now().minusYears(3 + i))
                             .phone(randomPhone())
                             .avatar(createAvatar("admin" + i))
@@ -426,7 +426,6 @@ public class DataInitializer {
         }
     }
     private String randomPhone() {
-        // Формат: +7 XXX XXX XX-XX
         int p1 = 100 + rnd.nextInt(900);
         int p2 = 100 + rnd.nextInt(900);
         int p3 = 10 + rnd.nextInt(90);

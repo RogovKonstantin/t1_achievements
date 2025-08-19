@@ -1,11 +1,13 @@
 package com.t1.achievements.service;
 
 import com.t1.achievements.entity.Asset;
+import com.t1.achievements.repository.AssetRepository;
 import io.minio.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -15,6 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,16 +25,42 @@ import java.util.stream.Collectors;
 public class AssetStorageService {
 
     private final MinioClient minio;
+    private final AssetRepository assetRepo; // NEW
 
     @Value("${minio.bucket}")
     private String defaultBucket;
 
-    /**
-     * Базовый публичный URL, по которому доступен MinIO через реверс-прокси.
-     * Пример: http://10.10.146.200/minio
-     */
     @Value("${minio.publicBaseUrl}")
     private String publicBaseUrl;
+
+    public Asset store(MultipartFile file, String prefix) {
+        try {
+            String ext = guessExt(file.getOriginalFilename());
+            String key = (prefix == null ? "" : prefix) + UUID.randomUUID() + (ext == null ? "" : ext);
+            String contentType = file.getContentType();
+
+            var resp = upload(file.getBytes(), key, contentType == null ? "application/octet-stream" : contentType);
+
+            Asset a = Asset.builder()
+                    .bucket(defaultBucket)
+                    .objectKey(key)
+                    .versionId(resp.versionId() == null ? "" : resp.versionId())
+                    .etag(resp.etag())
+                    .contentType(contentType)
+                    .sizeBytes(file.getSize())
+                    .build();
+
+            return assetRepo.save(a);
+        } catch (Exception e) {
+            throw new RuntimeException("Asset upload failed", e);
+        }
+    }
+
+    private String guessExt(String filename) {
+        if (filename == null) return null;
+        int i = filename.lastIndexOf('.');
+        return i >= 0 ? filename.substring(i) : null;
+    }
 
     @PostConstruct
     public void ensureBucket() throws Exception {
@@ -41,7 +70,6 @@ public class AssetStorageService {
         }
     }
 
-    // ---- PUBLIC URL ----
 
     public String publicUrl(Asset a) {
         if (a == null) return null;
@@ -52,7 +80,6 @@ public class AssetStorageService {
     public String buildPublicUrl(String bucket, String objectKey) {
         String bucketPart = urlEncode(bucket);
         String keyPart = encodePathPreservingSlashes(objectKey);
-        // http://host/minio/{bucket}/{objectKey}
         return String.format("%s/%s/%s", trimRight(publicBaseUrl), bucketPart, keyPart);
     }
 
@@ -70,8 +97,6 @@ public class AssetStorageService {
                 .map(seg -> URLEncoder.encode(seg, StandardCharsets.UTF_8))
                 .collect(Collectors.joining("/"));
     }
-
-    // ---- UPLOAD HELPERS (как были) ----
 
     public ObjectWriteResponse uploadPng(byte[] bytes, String objectKey) throws Exception {
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
