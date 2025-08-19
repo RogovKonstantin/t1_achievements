@@ -19,7 +19,12 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class AssetStorageService {
     private final MinioClient minio;
-    @Value("${minio.bucket}") private String bucket;
+
+    @Value("${minio.bucket}")
+    private String bucket;
+
+    @Value("${minio.endpoint.external}")
+    private String externalEndpoint;
 
     @PostConstruct
     public void ensureBucket() throws Exception {
@@ -46,7 +51,7 @@ public class AssetStorageService {
         BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         g.setColor(black ? Color.BLACK : Color.WHITE);
-        g.fillRect(0,0,size,size);
+        g.fillRect(0, 0, size, size);
         g.dispose();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", baos);
@@ -54,14 +59,24 @@ public class AssetStorageService {
     }
 
     public String presignedGet(String objectKey, Duration ttl) throws Exception {
-        return minio.getPresignedObjectUrl(
+        String url = minio.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(Method.GET)
                         .bucket(bucket)
                         .object(objectKey)
                         .expiry((int) ttl.toSeconds())
                         .build());
+
+        java.net.URI uri = java.net.URI.create(url);
+
+        // собираем новый URL с внешним хостом
+        String fixedUrl = externalEndpoint + uri.getRawPath() +
+                (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
+
+        return fixedUrl;
     }
+
+
     public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
             return minio.putObject(
@@ -74,7 +89,4 @@ public class AssetStorageService {
             );
         }
     }
-
-
 }
-
