@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,7 +27,8 @@ public class ProfileAchievementsService {
         return assets.publicUrl(a);
     }
 
-    public record UserDto(String fullName, String department, String position, String avatarUrl) {}
+    public record UserDto(String fullName, String department, String position, String avatarUrl, String phone,
+                          String hireDate, String email) {}
 
     public record AchievementCardDto(
             UUID id,
@@ -135,11 +137,16 @@ public class ProfileAchievementsService {
             ));
         }
 
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd--MM--yyyy");
+
         UserDto userDto = new UserDto(
                 u.getFullName(),
                 u.getDepartment(),
                 u.getPosition(),
-                assetUrl(u.getAvatar())
+                assetUrl(u.getAvatar()),
+                u.getPhone(),
+                u.getHireDate() != null ? u.getHireDate().format(fmt) : null,
+                u.getEmail()
         );
 
         return new ProfileViewDto(userDto, unlockedCount, sectionDtos);

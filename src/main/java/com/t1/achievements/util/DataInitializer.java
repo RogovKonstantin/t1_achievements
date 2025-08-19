@@ -79,6 +79,7 @@ public class DataInitializer {
                             .active(true)
                             .role(admin)   // <<< только одна роль
                             .hireDate(LocalDate.now().minusYears(3 + i))
+                            .phone(randomPhone())
                             .avatar(createAvatar("admin" + i))
                             .build()
             ));
@@ -98,6 +99,7 @@ public class DataInitializer {
                             .active(true)
                             .role(userRole)
                             .hireDate(LocalDate.now().minusDays(200 + rnd.nextInt(1200)))
+                            .phone(randomPhone())
                             .avatar(createAvatar("user" + i))
                             .build()
             ));
@@ -422,6 +424,14 @@ public class DataInitializer {
         try (InputStream in = res.getInputStream()) {
             return in.readAllBytes();
         }
+    }
+    private String randomPhone() {
+        // Формат: +7 XXX XXX XX-XX
+        int p1 = 100 + rnd.nextInt(900);
+        int p2 = 100 + rnd.nextInt(900);
+        int p3 = 10 + rnd.nextInt(90);
+        int p4 = 10 + rnd.nextInt(90);
+        return String.format("+7 %03d %03d %02d-%02d", p1, p2, p3, p4);
     }
 
     private Asset uploadAndSaveAsset(byte[] bytes, String objectKey, String contentType) throws Exception {
