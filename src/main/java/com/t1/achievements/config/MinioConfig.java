@@ -8,14 +8,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MinioConfig {
 
-    @Bean
-    public MinioClient minioClient(
-            @Value("${minio.endpoint.internal}") String internalEndpoint,
-            @Value("${minio.accessKey}") String accessKey,
-            @Value("${minio.secretKey}") String secretKey) {
+    @Value("${minio.endpoint}")
+    private String endpoint;
 
+    @Value("${minio.accessKey}")
+    private String accessKey;
+
+    @Value("${minio.secretKey}")
+    private String secretKey;
+
+    @Bean
+    public MinioClient minioClient() {
         return MinioClient.builder()
-                .endpoint(internalEndpoint) // для общения из контейнера
+                .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
                 .build();
     }

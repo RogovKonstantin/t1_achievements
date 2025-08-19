@@ -18,18 +18,15 @@ import java.time.Duration;
 @Service
 @RequiredArgsConstructor
 public class AssetStorageService {
+
     private final MinioClient minio;
 
     @Value("${minio.bucket}")
     private String bucket;
 
-    @Value("${minio.endpoint.external}")
-    private String externalEndpoint;
-
     @PostConstruct
     public void ensureBucket() throws Exception {
-        boolean exists = minio.bucketExists(
-                BucketExistsArgs.builder().bucket(bucket).build());
+        boolean exists = minio.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
         if (!exists) {
             minio.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
         }
@@ -53,29 +50,22 @@ public class AssetStorageService {
         g.setColor(black ? Color.BLACK : Color.WHITE);
         g.fillRect(0, 0, size, size);
         g.dispose();
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", baos);
         return baos.toByteArray();
     }
 
     public String presignedGet(String objectKey, Duration ttl) throws Exception {
-        String url = minio.getPresignedObjectUrl(
+        return minio.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(Method.GET)
                         .bucket(bucket)
-                        .object(objectKey)
+                        .object(objectKey)   // только относительный путь (например "icons/PODPISANT.png")
                         .expiry((int) ttl.toSeconds())
-                        .build());
-
-        java.net.URI uri = java.net.URI.create(url);
-
-        // собираем новый URL с внешним хостом
-        String fixedUrl = externalEndpoint + uri.getRawPath() +
-                (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
-
-        return fixedUrl;
+                        .build()
+        );
     }
-
 
     public ObjectWriteResponse upload(byte[] bytes, String objectKey, String contentType) throws Exception {
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
