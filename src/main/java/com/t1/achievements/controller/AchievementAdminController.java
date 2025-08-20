@@ -2,6 +2,8 @@ package com.t1.achievements.controller;
 
 import com.t1.achievements.RR.CreateAchievementRequest;
 import com.t1.achievements.RR.CreateSectionRequest;
+import com.t1.achievements.RR.UpdateAchievementRequest;
+import com.t1.achievements.RR.UpdateSectionRequest;
 import com.t1.achievements.controller.api.AchievementAdminApi;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.dto.admin.AchievementAdminFullDto;
@@ -58,6 +60,17 @@ public class AchievementAdminController implements AchievementAdminApi {
     @Override
     public List<AchievementAdminFullDto> listAllAchievementsFull() {
         return queryService.listAllAchievementsFull();
+    }
+
+    @Override
+    public AchievementDto updateAchievement(UUID achievementId, @Valid UpdateAchievementRequest request,
+                                            MultipartFile icon, MultipartFile animation) {
+        return service.updateAchievement(achievementId, request, icon, animation);
+    }
+
+    @Override
+    public SectionDto updateSection(UUID sectionId, UpdateSectionRequest body) {
+        return service.updateSection(sectionId, body);
     }
 
 }

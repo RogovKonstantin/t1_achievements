@@ -1,6 +1,6 @@
 package com.t1.achievements.service;
 
-import com.t1.achievements.RR.CriterionInput;
+import com.t1.achievements.RR.*;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.entity.*;
 import com.t1.achievements.repository.*;
@@ -13,10 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import com.t1.achievements.RR.CreateSectionRequest;
-import com.t1.achievements.RR.CreateAchievementRequest;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -198,6 +197,131 @@ public class AchievementAdminService {
                 section.getId(), icon.getId(), a.getVisibility().name(), a.getActive()
         );
     }
+    @Transactional
+    public SectionDto updateSection(UUID sectionId, UpdateSectionRequest req) {
+        Section s = sectionRepo.findById(sectionId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Раздел не найден"));
+
+        Section finalS = s;
+        req.name().ifPresent(name -> {
+            finalS.setName(name);
+            finalS.setCode(name.toUpperCase(Locale.ROOT)); // логика как при создании
+        });
+
+        req.description().ifPresent(s::setDescription);
+
+        s = sectionRepo.save(s);
+
+        return SectionDto.builder()
+                .id(s.getId())
+                .code(s.getCode())
+                .name(s.getName())
+                .description(s.getDescription())
+                .sortOrder(s.getSortOrder())
+                .active(s.getActive())
+                .build();
+    }
+
+    @Transactional
+    public AchievementDto updateAchievement(UUID achievementId,
+                                            UpdateAchievementRequest req,
+                                            MultipartFile iconFile,
+                                            MultipartFile animationFile) {
+
+        Achievement a = achievementRepo.findById(achievementId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Ачивка не найдена"));
+
+        // Поля из JSON
+        req.title().ifPresent(a::setTitle);
+
+        req.descriptionMd().ifPresent(md -> {
+            a.setDescriptionMd(md);
+            a.setShortDescription(autoShort(md));
+        });
+
+        req.points().ifPresent(points -> {
+            if (points < 0) throw new ResponseStatusException(BAD_REQUEST, "points не может быть отрицательным");
+            a.setPoints(points);
+        });
+
+        // Если пришёл sectionId — добавляем связь с этой секцией (полное управление через updateCategories)
+        req.sectionId().ifPresent(secId -> {
+            Section section = sectionRepo.findById(secId)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Раздел не найден"));
+            if (a.getSections() == null) a.setSections(new HashSet<>());
+            a.getSections().add(section);
+        });
+
+        // Критерии: если поле прислали — пересобираем все
+        if (req.criteria().isPresent()) {
+            List<CriterionInput> list = req.criteria().get();
+            if (list == null || list.isEmpty()) {
+                throw new ResponseStatusException(BAD_REQUEST, "criteria: список пуст");
+            }
+
+            // удалить старые
+            criterionRepo.deleteByAchievementId(a.getId());
+
+            // создать новые
+            AtomicInteger counter = new AtomicInteger(0);
+            list.forEach(in -> {
+                MappedCriterion mc = mapUiCriterionToActivityType(in);
+                ActivityType type = activityTypeRepo.findByCodeIgnoreCase(mc.code())
+                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ActivityType не найден: " + mc.code()));
+
+                int sortOrder = in.sortOrder() != null ? in.sortOrder() : counter.addAndGet(10);
+
+                criterionRepo.save(AchievementCriterion.builder()
+                        .achievement(a)
+                        .activityType(type)
+                        .requiredCount(mc.requiredCount())
+                        .withinDays(in.withinDays())
+                        .descriptionOverride(in.descriptionOverride())
+                        .sortOrder(sortOrder)
+                        .build());
+            });
+        }
+
+        // Файлы: если пришли — заменить
+        if (iconFile != null) {
+            if (iconFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Иконка пуста");
+            String iconName = sanitize(iconFile.getOriginalFilename());
+            Asset icon = uploadAndSave(iconFile, "icons/" + iconName);
+            a.setIcon(icon);
+        }
+
+        if (animationFile != null) {
+            if (animationFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Анимация пуста");
+            String animName = sanitize(animationFile.getOriginalFilename());
+            Asset animation = uploadAndSave(animationFile, "animations/" + animName);
+            a.setAnimation(animation);
+        }
+
+        Achievement saved = achievementRepo.save(a); // ⚡ теперь сохраняем в новую переменную
+
+        // Возвратим DTO в том же формате, что при создании
+        UUID anySectionId = saved.getSections() == null || saved.getSections().isEmpty()
+                ? req.sectionId().orElse(null)
+                : saved.getSections().iterator().next().getId();
+
+        if (anySectionId == null) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "У ачивки не определён раздел. Укажите sectionId или привяжите категории.");
+        }
+
+        return new AchievementDto(
+                saved.getId(),
+                saved.getTitle(),
+                saved.getShortDescription(),
+                saved.getDescriptionMd(),
+                anySectionId,
+                saved.getIcon() != null ? saved.getIcon().getId() : null,
+                saved.getVisibility().name(),
+                saved.getActive()
+        );
+    }
+
+
 
     private String sanitize(String filename) {
         if (filename == null) return "file";

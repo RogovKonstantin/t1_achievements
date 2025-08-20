@@ -2,6 +2,7 @@ package com.t1.achievements.repository;
 
 import com.t1.achievements.entity.AchievementCriterion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
@@ -24,4 +25,7 @@ public interface AchievementCriterionRepository extends JpaRepository<Achievemen
     List<SumRequired> sumRequiredByAchievementIds(Collection<UUID> achievementIds);
     List<AchievementCriterion> findByAchievementId(UUID achievementId);
 
+    @Modifying
+    @Query("delete from AchievementCriterion c where c.achievement.id = :achievementId")
+    void deleteByAchievementId(UUID achievementId);
 }

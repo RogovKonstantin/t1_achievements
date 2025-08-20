@@ -2,6 +2,8 @@ package com.t1.achievements.controller.api;
 
 import com.t1.achievements.RR.CreateAchievementRequest;
 import com.t1.achievements.RR.CreateSectionRequest;
+import com.t1.achievements.RR.UpdateAchievementRequest;
+import com.t1.achievements.RR.UpdateSectionRequest;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.dto.admin.AchievementAdminFullDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,4 +69,20 @@ public interface AchievementAdminApi {
     })
     @GetMapping("/achievements/full")
     List<AchievementAdminFullDto> listAllAchievementsFull();
+    @Operation(summary = "Частично обновить раздел (категорию)")
+
+    @PatchMapping("/sections/{sectionId}")
+    SectionDto updateSection(
+            @PathVariable UUID sectionId,
+            @RequestBody UpdateSectionRequest body
+    );
+    @Operation(summary = "Частично обновить ачивку (multipart: JSON + optional icon/animation)")
+
+    @PatchMapping(value = "/achievements/{achievementId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    AchievementDto updateAchievement(
+            @PathVariable UUID achievementId,
+            @RequestPart("request") @Valid UpdateAchievementRequest request,
+            @RequestPart(value = "icon", required = false) MultipartFile icon,
+            @RequestPart(value = "animation", required = false) MultipartFile animation
+    );
 }
