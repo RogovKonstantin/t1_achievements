@@ -25,7 +25,9 @@ public class Achievement {
     @Column(columnDefinition = "text") private String descriptionMd;
 
     @Column(nullable = false) private Integer points = 0;
-    @Column(nullable = false) private Boolean repeatable = false;
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean repeatable = false;
     @Enumerated(EnumType.STRING) @Column(nullable = false)
     private Visibility visibility = Visibility.PUBLIC;
 
@@ -53,6 +55,8 @@ public class Achievement {
             joinColumns = @JoinColumn(name = "achievement_id"),
             inverseJoinColumns = @JoinColumn(name = "section_id")
     )
+    @Builder.Default
     private Set<Section> sections = new HashSet<>();
+
 }
 

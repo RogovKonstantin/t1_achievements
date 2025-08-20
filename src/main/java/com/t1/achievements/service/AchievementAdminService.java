@@ -4,7 +4,9 @@ import com.t1.achievements.RR.CriterionInput;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.entity.*;
 import com.t1.achievements.repository.*;
+import io.minio.ObjectWriteResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import com.t1.achievements.RR.CreateAchievementRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
@@ -30,9 +33,12 @@ public class AchievementAdminService {
     private final ActivityTypeRepository activityTypeRepo;
     private final AchievementCriterionRepository criterionRepo;
     private final AssetRepository assetRepo;
+    private final AssetStorageService storage;
+
 
     private final AssetStorageService assets;
-
+    @Value("${minio.bucket}")
+    private String bucket;
     private String assetUrl(Asset a) {
         return assets.publicUrl(a);
     }
@@ -132,30 +138,40 @@ public class AchievementAdminService {
     }
 
     @Transactional
-    public AchievementDto createAchievement(CreateAchievementRequest req, MultipartFile iconFile) {
+    public AchievementDto createAchievement(CreateAchievementRequest req,
+                                            MultipartFile iconFile,
+                                            MultipartFile animationFile) {
+        if (iconFile == null || iconFile.isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Иконка обязательна");
+        }
+
         Section section = sectionRepo.findById(req.sectionId())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Раздел не найден"));
 
-        Asset icon = null;
-        if (iconFile != null && !iconFile.isEmpty()) {
-            icon = assets.store(iconFile, "achievements/icons/");
-        } else if (req.iconAssetId() != null) {
-            icon = assetRepo.findById(req.iconAssetId())
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Иконка (Asset) не найдена"));
-        }
+        // === сохраняем по тем же путям, что в сидере ===
+        String iconName = sanitize(iconFile.getOriginalFilename());
+        Asset icon = uploadAndSave(iconFile, "icons/" + iconName); // image/png|jpg и пр.
 
-        Achievement.Visibility vis = req.visibility() == null
-                ? Achievement.Visibility.PUBLIC
-                : Achievement.Visibility.valueOf(req.visibility().toUpperCase(Locale.ROOT));
+        Asset animation = null;
+        if (animationFile != null && !animationFile.isEmpty()) {
+            String animName = sanitize(animationFile.getOriginalFilename());
+            animation = uploadAndSave(animationFile, "animations/" + animName); // ожидаем image/gif
+        }
 
         Achievement a = Achievement.builder()
                 .title(req.title())
-                .shortDescription(req.shortDescription())
+                .shortDescription(autoShort(req.descriptionMd()))
                 .descriptionMd(req.descriptionMd())
-                .active(req.active() == null || req.active())
+                .visibility(Achievement.Visibility.PUBLIC)
+                .active(true)
                 .icon(icon)
+                .animation(animation)   // <- добавили
+                .points(req.points())
+                .repeatable(false)
                 .build();
-        a.setVisibility(vis);
+
+        // обязательно, иначе NPE при add
+        if (a.getSections() == null) a.setSections(new HashSet<>());
         a.getSections().add(section);
 
         a = achievementRepo.save(a);
@@ -163,43 +179,75 @@ public class AchievementAdminService {
         if (req.criteria() != null) {
             int i = 0;
             for (CriterionInput in : req.criteria()) {
-                MappedCriterion mapped = mapUiCriterionToActivityType(in);
-                ActivityType type = activityTypeRepo.findByCodeIgnoreCase(mapped.code())
-                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ActivityType не найден: " + mapped.code()));
-
-                AchievementCriterion c = AchievementCriterion.builder()
+                MappedCriterion mc = mapUiCriterionToActivityType(in);
+                ActivityType type = activityTypeRepo.findByCodeIgnoreCase(mc.code())
+                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ActivityType не найден: " + mc.code()));
+                criterionRepo.save(AchievementCriterion.builder()
                         .achievement(a)
                         .activityType(type)
-                        .requiredCount(mapped.requiredCount())
+                        .requiredCount(mc.requiredCount())
                         .withinDays(in.withinDays())
                         .descriptionOverride(in.descriptionOverride())
                         .sortOrder(in.sortOrder() != null ? in.sortOrder() : (++i) * 10)
-                        .build();
-
-                criterionRepo.save(c);
+                        .build());
             }
         }
 
         return new AchievementDto(
-                a.getId(),
-                a.getTitle(),
-                a.getShortDescription(),
-                a.getDescriptionMd(),
-                section.getId(),
-                icon != null ? icon.getId() : null,
-                a.getVisibility().name(),
-                a.getActive()
+                a.getId(), a.getTitle(), a.getShortDescription(), a.getDescriptionMd(),
+                section.getId(), icon.getId(), a.getVisibility().name(), a.getActive()
         );
+    }
+
+    private String sanitize(String filename) {
+        if (filename == null) return "file";
+        String name = filename.replace("\\", "/");
+        name = name.substring(name.lastIndexOf('/') + 1); // только basename
+        // не трогаем регистр/расширение, уберём только совсем опасные символы
+        return name.replaceAll("[\\r\\n\\t]", "_");
+    }
+
+    private Asset uploadAndSave(MultipartFile file, String objectKey) {
+        try {
+            byte[] bytes = file.getBytes();
+            String ct = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+
+            // используем те же методы, что и сидер
+            ObjectWriteResponse resp = "image/png".equalsIgnoreCase(ct)
+                    ? storage.uploadPng(bytes, objectKey)
+                    : storage.upload(bytes, objectKey, ct);
+
+            return assetRepo.save(Asset.builder()
+                    .bucket(bucket)
+                    .objectKey(objectKey)
+                    .versionId(Optional.ofNullable(resp.versionId()).orElse(""))
+                    .contentType(ct)
+                    .sizeBytes((long) bytes.length)
+                    .etag(resp.etag())
+                    .build());
+        } catch (Exception e) {
+            throw new ResponseStatusException(BAD_REQUEST, "Не удалось загрузить файл: " + objectKey, e);
+        }
     }
 
     private MappedCriterion mapUiCriterionToActivityType(CriterionInput in) {
         String ui = in.typeCode().toUpperCase(Locale.ROOT);
         int val = in.value();
-        if ("TENURE_YEARS".equals(ui)) {
-            return new MappedCriterion("TENURE_DAYS", Math.toIntExact((long) val * 365));
-        }
+        if ("TENURE_YEARS".equals(ui)) return new MappedCriterion("TENURE_DAYS", Math.toIntExact((long) val * 365));
         return new MappedCriterion(ui, val);
     }
-
     private record MappedCriterion(String code, int requiredCount) {}
+
+
+    private String autoShort(String md) {
+        if (md == null) return null;
+        // грубо уберём Markdown и обрежем
+        String s = md.replaceAll("\\[(.+?)\\]\\(.+?\\)", "$1") // ссылки
+                .replaceAll("[*_`#>]+", "")               // базовые маркдауны
+                .replaceAll("\\s+", " ")
+                .trim();
+        int max = 180;
+        return s.length() > max ? s.substring(0, max).trim() + "…" : s;
+    }
+
 }

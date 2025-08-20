@@ -5,6 +5,7 @@ import com.t1.achievements.RR.CreateSectionRequest;
 import com.t1.achievements.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -40,10 +41,11 @@ public interface AchievementAdminApi {
     @GetMapping("/achievements/criteria")
     List<CriterionTypeDto> listCriterionTypes();
 
-    @Operation(summary = "Создать ачивку")
+    @Operation(summary = "Создать ачивку (multipart: JSON + icon + optional animation)")
     @PostMapping(value = "/achievements", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    AchievementDto createAchievement(
-            @RequestPart("request") CreateAchievementRequest request,
-            @RequestPart(value = "icon", required = false) MultipartFile icon
+    public AchievementDto createAchievement(
+            @RequestPart("request") @Valid CreateAchievementRequest request,
+            @RequestPart("icon") MultipartFile icon,                               // обязательно
+            @RequestPart(value = "animation") MultipartFile animation // опционально (gif)
     );
 }
