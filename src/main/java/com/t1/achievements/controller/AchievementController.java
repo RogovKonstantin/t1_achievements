@@ -2,6 +2,7 @@ package com.t1.achievements.controller;
 
 import com.t1.achievements.controller.api.AchievementApi;
 import com.t1.achievements.dto.AchievementDetailDto;
+import com.t1.achievements.dto.view.ActivityFeedDto;
 import com.t1.achievements.dto.view.ProfileViewDto;
 import com.t1.achievements.dto.view.SectionsViewDto;
 import com.t1.achievements.repository.UserRepository;
@@ -41,5 +42,10 @@ public class AchievementController implements AchievementApi {
     @Override
     public AchievementDetailDto getAchievementForUser(@NotNull UUID achievementId, @NotNull UUID userId) {
         return service.getForUser(achievementId, userId);
+    }
+
+    @Override
+    public ActivityFeedDto getUserActivity(UUID userId) {
+        return profileAchievementsService.getActivity(userId);
     }
 }

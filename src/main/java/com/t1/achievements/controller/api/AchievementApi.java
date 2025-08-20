@@ -1,10 +1,13 @@
 package com.t1.achievements.controller.api;
 
 import com.t1.achievements.dto.AchievementDetailDto;
+import com.t1.achievements.dto.admin.AchievementAdminFullDto;
+import com.t1.achievements.dto.view.ActivityFeedDto;
 import com.t1.achievements.dto.view.ProfileViewDto;
 import com.t1.achievements.dto.view.SectionsViewDto;
 import com.t1.achievements.exception.StatusResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "achievements", description = "API для чтения ачивок")
@@ -59,4 +63,19 @@ public interface AchievementApi {
             @PathVariable @NotNull UUID achievementId,
             @PathVariable @NotNull UUID userId
     );
+    @Operation(summary = "Лента активности пользователя (награды)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK",
+                    content = @Content(schema = @Schema(implementation = ActivityFeedDto.class))),
+            @ApiResponse(responseCode = "404", description = "Пользователь не найден",
+                    content = @Content(schema = @Schema(implementation = StatusResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Некорректный ID",
+                    content = @Content(schema = @Schema(implementation = StatusResponse.class)))
+    })
+    @GetMapping("/activity/{userId}")
+    ActivityFeedDto getUserActivity(
+            @PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId
+    );
+
+
 }

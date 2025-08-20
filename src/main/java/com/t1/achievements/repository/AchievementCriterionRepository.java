@@ -22,4 +22,6 @@ public interface AchievementCriterionRepository extends JpaRepository<Achievemen
         group by c.achievement.id
     """)
     List<SumRequired> sumRequiredByAchievementIds(Collection<UUID> achievementIds);
+    List<AchievementCriterion> findByAchievementId(UUID achievementId);
+
 }

@@ -4,7 +4,9 @@ import com.t1.achievements.RR.CreateAchievementRequest;
 import com.t1.achievements.RR.CreateSectionRequest;
 import com.t1.achievements.controller.api.AchievementAdminApi;
 import com.t1.achievements.dto.*;
+import com.t1.achievements.dto.admin.AchievementAdminFullDto;
 import com.t1.achievements.service.AchievementAdminService;
+import com.t1.achievements.service.AdminAchievementQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class AchievementAdminController implements AchievementAdminApi {
 
     private final AchievementAdminService service;
+    private final AdminAchievementQueryService queryService;
 
     @Override
     public PageResponse<UserListItemDto> getHolders(UUID achievementId, @ParameterObject Pageable pageable) {
@@ -52,6 +55,9 @@ public class AchievementAdminController implements AchievementAdminApi {
     public AchievementDto createAchievement(CreateAchievementRequest request, MultipartFile icon, MultipartFile animation) {
         return service.createAchievement(request, icon, animation);
     }
-
+    @Override
+    public List<AchievementAdminFullDto> listAllAchievementsFull() {
+        return queryService.listAllAchievementsFull();
+    }
 
 }

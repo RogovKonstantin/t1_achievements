@@ -6,11 +6,14 @@ import com.t1.achievements.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -116,6 +119,30 @@ public class ProfileAchievementsService {
         );
 
         return new ProfileViewDto(userDto, unlockedCount, sectionDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public ActivityFeedDto getActivity(UUID userId) {
+        // 404 если пользователь не существует/не активен
+        userRepo.findById(userId).orElseThrow(() ->
+                new ResponseStatusException(NOT_FOUND, "Пользователь не найден"));
+
+        var list = userAchRepo.findByUserIdOrderByAwardedAtDesc(userId);
+
+        var items = list.stream()
+                .map(ua -> {
+                    var a = ua.getAchievement();
+                    return new ActivityEventDto(
+                            a.getId(),
+                            a.getTitle(),
+                            assetUrl(a.getIcon()),
+                            ua.getAwardedAt(),
+                            "Получена ачивка «" + a.getTitle() + "»."
+                    );
+                })
+                .toList();
+
+        return new ActivityFeedDto(items);
     }
 
     @Transactional(readOnly = true)
