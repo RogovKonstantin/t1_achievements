@@ -2,6 +2,8 @@ package com.t1.achievements.controller;
 
 import com.t1.achievements.controller.api.AchievementApi;
 import com.t1.achievements.dto.AchievementDetailDto;
+import com.t1.achievements.dto.view.ProfileViewDto;
+import com.t1.achievements.dto.view.SectionsViewDto;
 import com.t1.achievements.repository.UserRepository;
 import com.t1.achievements.service.AchievementViewService;
 import com.t1.achievements.service.ProfileAchievementsService;
@@ -25,21 +27,19 @@ public class AchievementController implements AchievementApi {
     private final UserRepository userRepo;
 
     @Override
-    public ProfileAchievementsService.ProfileViewDto getUserAchievements(
+    public ProfileViewDto getUserAchievements(
             @PathVariable @NotNull(message = "Параметр userId обязателен") UUID userId) {
         return profileAchievementsService.getProfileView(userId);
     }
 
     @Override
-    public ProfileAchievementsService.SectionsViewDto getMyAchievements(
-            @AuthenticationPrincipal UserDetails principal) {
+    public SectionsViewDto getMyAchievements(@AuthenticationPrincipal UserDetails principal) {
         var u = userRepo.findByUsername(principal.getUsername()).orElseThrow();
         return profileAchievementsService.getSectionsViewAll(u.getId());
     }
 
     @Override
-    public AchievementDetailDto getAchievementForUser(
-            @NotNull UUID achievementId, @NotNull UUID userId) {
+    public AchievementDetailDto getAchievementForUser(@NotNull UUID achievementId, @NotNull UUID userId) {
         return service.getForUser(achievementId, userId);
     }
 }
