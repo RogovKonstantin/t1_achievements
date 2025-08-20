@@ -7,16 +7,19 @@ import com.t1.achievements.RR.UpdateSectionRequest;
 import com.t1.achievements.controller.api.AchievementAdminApi;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.dto.admin.AchievementAdminFullDto;
+import com.t1.achievements.dto.admin.UserAchievementGrantDto;
 import com.t1.achievements.service.AchievementAdminService;
 import com.t1.achievements.service.AdminAchievementQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -71,6 +74,16 @@ public class AchievementAdminController implements AchievementAdminApi {
     @Override
     public SectionDto updateSection(UUID sectionId, UpdateSectionRequest body) {
         return service.updateSection(sectionId, body);
+    }
+    @Override
+    public UserAchievementGrantDto grantAchievementToUser(UUID userId, UUID achievementId) {
+        return service.grantAchievementToUser(userId, achievementId);
+    }
+
+    @Override
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeAchievementFromUser(UUID userId, UUID achievementId) {
+        service.revokeAchievementFromUser(userId, achievementId);
     }
 
 }

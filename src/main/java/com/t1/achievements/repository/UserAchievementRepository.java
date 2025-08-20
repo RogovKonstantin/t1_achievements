@@ -19,6 +19,9 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
         UUID getAchievementId();
         long getAwardedCount();
     }
+    boolean existsByUserIdAndAchievementId(UUID userId, UUID achievementId);
+    void deleteByUserIdAndAchievementId(UUID userId, UUID achievementId);
+    Optional<UserAchievement> findByUserIdAndAchievementId(UUID userId, UUID achievementId);
 
     @Query("""
            select ua.achievement.id as achievementId, count(distinct ua.user.id) as awardedCount

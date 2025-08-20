@@ -2,7 +2,10 @@ package com.t1.achievements.service;
 
 import com.t1.achievements.RR.*;
 import com.t1.achievements.dto.*;
+import com.t1.achievements.dto.admin.UserAchievementGrantDto;
 import com.t1.achievements.entity.*;
+import com.t1.achievements.exception.ConflictException;
+import com.t1.achievements.exception.NotFoundException;
 import com.t1.achievements.repository.*;
 import io.minio.ObjectWriteResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import static org.springframework.http.HttpStatus.CONFLICT;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,6 +41,8 @@ public class AchievementAdminService {
     private final AchievementCriterionRepository criterionRepo;
     private final AssetRepository assetRepo;
     private final AssetStorageService storage;
+    private final UserAchievementRepository userAchRepo;
+    private final UserAchievementProgressRepository progressRepo;
 
 
     private final AssetStorageService assets;
@@ -320,6 +330,48 @@ public class AchievementAdminService {
                 saved.getActive()
         );
     }
+    @Transactional
+    public UserAchievementGrantDto grantAchievementToUser(UUID userId, UUID achievementId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new NotFoundException( "Пользователь не найден"));
+
+        Achievement a = achievementRepo.findById(achievementId)
+                .orElseThrow(() -> new NotFoundException( "Ачивка не найдена"));
+
+        if (Boolean.FALSE.equals(a.getRepeatable())
+                && userAchRepo.existsByUserIdAndAchievementId(user.getId(), a.getId())) {
+            throw new ConflictException("Пользователь уже имеет эту ачивку");
+        }
+
+        Instant now = Instant.now();
+
+
+
+        UserAchievement ua = UserAchievement.builder()
+                .user(user)
+                .achievement(a)
+                .awardedAt(now)
+                .method(UserAchievement.Method.MANUAL)
+                .build();
+
+        ua = userAchRepo.save(ua);
+
+        return new UserAchievementGrantDto(
+                user.getId(),
+                a.getId(),
+                DateTimeFormatter.ISO_INSTANT.format(now) // форматируем Instant в строку ISO-8601
+        );
+    }
+    @Transactional
+    public void revokeAchievementFromUser(UUID userId, UUID achievementId) {
+        userAchRepo.findByUserIdAndAchievementId(userId, achievementId)
+                .orElseThrow(() -> new NotFoundException( "У пользователя нет этой ачивки"));
+
+         progressRepo.deleteByUserIdAndAchievementId(userId, achievementId);
+
+        userAchRepo.deleteByUserIdAndAchievementId(userId, achievementId);
+    }
+
 
 
 

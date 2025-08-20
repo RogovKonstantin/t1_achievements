@@ -33,6 +33,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new StatusResponse("error", "Параметр пути '" + ex.getVariableName() + "' обязателен"));
     }
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<StatusResponse> handleConflict(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new StatusResponse("error", ex.getMessage()));
+    }
+
+
+
 
     @ExceptionHandler({
             MethodArgumentTypeMismatchException.class,

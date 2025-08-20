@@ -6,6 +6,7 @@ import com.t1.achievements.RR.UpdateAchievementRequest;
 import com.t1.achievements.RR.UpdateSectionRequest;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.dto.admin.AchievementAdminFullDto;
+import com.t1.achievements.dto.admin.UserAchievementGrantDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -85,4 +86,19 @@ public interface AchievementAdminApi {
             @RequestPart(value = "icon", required = false) MultipartFile icon,
             @RequestPart(value = "animation", required = false) MultipartFile animation
     );
+
+    @Operation(summary = "Назначить ачивку пользователю (ручное начисление)")
+    @PostMapping("/users/{userId}/achievements/{achievementId}")
+    UserAchievementGrantDto grantAchievementToUser(
+            @PathVariable UUID userId,
+            @PathVariable UUID achievementId
+    );
+
+    @Operation(summary = "Снять (отозвать) ачивку у пользователя")
+    @DeleteMapping("/users/{userId}/achievements/{achievementId}")
+    void revokeAchievementFromUser(
+            @PathVariable UUID userId,
+            @PathVariable UUID achievementId
+    );
+
 }
