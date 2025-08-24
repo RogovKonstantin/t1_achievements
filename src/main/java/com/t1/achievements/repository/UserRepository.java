@@ -29,7 +29,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            """)
     Page<User> findHoldersByAchievementId(@Param("achievementId") UUID achievementId, Pageable pageable);
 
-    // NEW: базовый список активных пользователей
     Page<User> findByActiveTrue(Pageable pageable);
 
 }

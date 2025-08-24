@@ -17,7 +17,8 @@ public record AchievementAdminFullDto(
         Boolean repeatable,
         String visibility,       // enum как строка
         String iconUrl,
-        String bannerUrl,
+        String animationUrl,
+        Double holdersPercent,
         Boolean active,
         Instant createdAt,
         Instant updatedAt,

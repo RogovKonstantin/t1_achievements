@@ -364,12 +364,17 @@ public class AchievementAdminService {
     }
     @Transactional
     public void revokeAchievementFromUser(UUID userId, UUID achievementId) {
-        userAchRepo.findByUserIdAndAchievementId(userId, achievementId)
-                .orElseThrow(() -> new NotFoundException( "У пользователя нет этой ачивки"));
+        if (!userRepo.existsById(userId)) {
+            throw new NotFoundException("Пользователь не найден");
+        }
+        if (!achievementRepo.existsById(achievementId)) {
+            throw new NotFoundException("Ачивка не найдена");
+        }
 
-         progressRepo.deleteByUserIdAndAchievementId(userId, achievementId);
+        progressRepo.deleteByUserIdAndAchievementId(userId, achievementId);
 
         userAchRepo.deleteByUserIdAndAchievementId(userId, achievementId);
+
     }
 
 
