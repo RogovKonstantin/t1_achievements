@@ -52,10 +52,10 @@ public interface AchievementAdminApi {
 
     @Operation(summary = "Создать ачивку (multipart: JSON + icon + optional animation)")
     @PostMapping(value = "/achievements", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public AchievementDto createAchievement(
+    AchievementDto createAchievement(
             @RequestPart("request") @Valid CreateAchievementRequest request,
-            @RequestPart("icon") MultipartFile icon,                               // обязательно
-            @RequestPart(value = "animation") MultipartFile animation // опционально (gif)
+            @RequestPart("icon") MultipartFile icon,
+            @RequestPart("animation") MultipartFile animation
     );
     @Operation(
             summary = "Полный список ачивок (для админа)",
@@ -77,8 +77,8 @@ public interface AchievementAdminApi {
             @PathVariable UUID sectionId,
             @RequestBody UpdateSectionRequest body
     );
-    @Operation(summary = "Частично обновить ачивку (multipart: JSON + optional icon/animation)")
 
+    @Operation(summary = "Частично обновить ачивку (multipart: JSON + optional icon/animation)")
     @PatchMapping(value = "/achievements/{achievementId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     AchievementDto updateAchievement(
             @PathVariable UUID achievementId,

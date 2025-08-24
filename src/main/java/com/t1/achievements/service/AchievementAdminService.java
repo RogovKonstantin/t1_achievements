@@ -146,25 +146,31 @@ public class AchievementAdminService {
         return list;
     }
 
+    // com.t1.achievements.service.AchievementAdminService  (фрагменты)
+
     @Transactional
     public AchievementDto createAchievement(CreateAchievementRequest req,
                                             MultipartFile iconFile,
                                             MultipartFile animationFile) {
+
         if (iconFile == null || iconFile.isEmpty()) {
             throw new ResponseStatusException(BAD_REQUEST, "Иконка обязательна");
         }
 
-        Section section = sectionRepo.findById(req.sectionId())
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Раздел не найден"));
+        // ⬇️ грузим ВСЕ секции сразу
+        List<UUID> sectionIds = req.sectionIds();
+        var sections = sectionRepo.findAllById(sectionIds);
+        if (sections.size() != sectionIds.size()) {
+            throw new ResponseStatusException(NOT_FOUND, "Некоторые категории не найдены");
+        }
 
-        // === сохраняем по тем же путям, что в сидере ===
         String iconName = sanitize(iconFile.getOriginalFilename());
-        Asset icon = uploadAndSave(iconFile, "icons/" + iconName); // image/png|jpg и пр.
+        Asset icon = uploadAndSave(iconFile, "icons/" + iconName);
 
         Asset animation = null;
         if (animationFile != null && !animationFile.isEmpty()) {
             String animName = sanitize(animationFile.getOriginalFilename());
-            animation = uploadAndSave(animationFile, "animations/" + animName); // ожидаем image/gif
+            animation = uploadAndSave(animationFile, "animations/" + animName);
         }
 
         Achievement a = Achievement.builder()
@@ -174,15 +180,12 @@ public class AchievementAdminService {
                 .visibility(Achievement.Visibility.PUBLIC)
                 .active(true)
                 .icon(icon)
-                .animation(animation)   // <- добавили
+                .animation(animation)
                 .points(req.points())
                 .repeatable(false)
                 .build();
 
-        // обязательно, иначе NPE при add
-        if (a.getSections() == null) a.setSections(new HashSet<>());
-        a.getSections().add(section);
-
+        a.setSections(new HashSet<>(sections));   // ⬅️ сразу все секции
         a = achievementRepo.save(a);
 
         if (req.criteria() != null) {
@@ -204,9 +207,96 @@ public class AchievementAdminService {
 
         return new AchievementDto(
                 a.getId(), a.getTitle(), a.getShortDescription(), a.getDescriptionMd(),
-                section.getId(), icon.getId(), a.getVisibility().name(), a.getActive()
+                a.getSections().stream().map(Section::getId).toList(),
+                a.getIcon() != null ? a.getIcon().getId() : null,
+                a.getVisibility().name(), a.getActive()
         );
     }
+
+    @Transactional
+    public AchievementDto updateAchievement(UUID achievementId,
+                                            UpdateAchievementRequest req,
+                                            MultipartFile iconFile,
+                                            MultipartFile animationFile) {
+
+        Achievement a = achievementRepo.findById(achievementId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Ачивка не найдена"));
+
+        req.title().ifPresent(a::setTitle);
+
+        req.descriptionMd().ifPresent(md -> {
+            a.setDescriptionMd(md);
+            a.setShortDescription(autoShort(md));
+        });
+
+        req.points().ifPresent(points -> {
+            if (points < 0) throw new ResponseStatusException(BAD_REQUEST, "points не может быть отрицательным");
+            a.setPoints(points);
+        });
+
+        // ⬇️ Если прислали sectionIds — ПОЛНОСТЬЮ заменяем привязки
+        if (req.sectionIds().isPresent()) {
+            List<UUID> ids = req.sectionIds().get();
+            List<Section> sections = ids.isEmpty() ? List.of() : sectionRepo.findAllById(ids);
+            if (sections.size() != ids.size()) {
+                throw new ResponseStatusException(NOT_FOUND, "Некоторые категории не найдены");
+            }
+            a.setSections(new HashSet<>(sections));
+        }
+
+        // Критерии: если поле прислали — пересобираем все
+        if (req.criteria().isPresent()) {
+            List<CriterionInput> list = req.criteria().get();
+            if (list == null || list.isEmpty()) {
+                throw new ResponseStatusException(BAD_REQUEST, "criteria: список пуст");
+            }
+            criterionRepo.deleteByAchievementId(a.getId());
+            AtomicInteger counter = new AtomicInteger(0);
+            list.forEach(in -> {
+                MappedCriterion mc = mapUiCriterionToActivityType(in);
+                ActivityType type = activityTypeRepo.findByCodeIgnoreCase(mc.code())
+                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ActivityType не найден: " + mc.code()));
+                int sortOrder = in.sortOrder() != null ? in.sortOrder() : counter.addAndGet(10);
+                criterionRepo.save(AchievementCriterion.builder()
+                        .achievement(a)
+                        .activityType(type)
+                        .requiredCount(mc.requiredCount())
+                        .withinDays(in.withinDays())
+                        .descriptionOverride(in.descriptionOverride())
+                        .sortOrder(sortOrder)
+                        .build());
+            });
+        }
+
+        // Файлы: если пришли — заменить
+        if (iconFile != null) {
+            if (iconFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Иконка пуста");
+            String iconName = sanitize(iconFile.getOriginalFilename());
+            Asset icon = uploadAndSave(iconFile, "icons/" + iconName);
+            a.setIcon(icon);
+        }
+        if (animationFile != null) {
+            if (animationFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Анимация пуста");
+            String animName = sanitize(animationFile.getOriginalFilename());
+            Asset animation = uploadAndSave(animationFile, "animations/" + animName);
+            a.setAnimation(animation);
+        }
+
+        Achievement saved = achievementRepo.save(a);
+
+        return new AchievementDto(
+                saved.getId(),
+                saved.getTitle(),
+                saved.getShortDescription(),
+                saved.getDescriptionMd(),
+                (saved.getSections() == null ? List.<UUID>of() : saved.getSections().stream().map(Section::getId).toList()),
+                saved.getIcon() != null ? saved.getIcon().getId() : null,
+                saved.getVisibility().name(),
+                saved.getActive()
+        );
+    }
+
+
     @Transactional
     public SectionDto updateSection(UUID sectionId, UpdateSectionRequest req) {
         Section s = sectionRepo.findById(sectionId)
@@ -230,105 +320,6 @@ public class AchievementAdminService {
                 .sortOrder(s.getSortOrder())
                 .active(s.getActive())
                 .build();
-    }
-
-    @Transactional
-    public AchievementDto updateAchievement(UUID achievementId,
-                                            UpdateAchievementRequest req,
-                                            MultipartFile iconFile,
-                                            MultipartFile animationFile) {
-
-        Achievement a = achievementRepo.findById(achievementId)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Ачивка не найдена"));
-
-        // Поля из JSON
-        req.title().ifPresent(a::setTitle);
-
-        req.descriptionMd().ifPresent(md -> {
-            a.setDescriptionMd(md);
-            a.setShortDescription(autoShort(md));
-        });
-
-        req.points().ifPresent(points -> {
-            if (points < 0) throw new ResponseStatusException(BAD_REQUEST, "points не может быть отрицательным");
-            a.setPoints(points);
-        });
-
-        // Если пришёл sectionId — добавляем связь с этой секцией (полное управление через updateCategories)
-        req.sectionId().ifPresent(secId -> {
-            Section section = sectionRepo.findById(secId)
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Раздел не найден"));
-            if (a.getSections() == null) a.setSections(new HashSet<>());
-            a.getSections().add(section);
-        });
-
-        // Критерии: если поле прислали — пересобираем все
-        if (req.criteria().isPresent()) {
-            List<CriterionInput> list = req.criteria().get();
-            if (list == null || list.isEmpty()) {
-                throw new ResponseStatusException(BAD_REQUEST, "criteria: список пуст");
-            }
-
-            // удалить старые
-            criterionRepo.deleteByAchievementId(a.getId());
-
-            // создать новые
-            AtomicInteger counter = new AtomicInteger(0);
-            list.forEach(in -> {
-                MappedCriterion mc = mapUiCriterionToActivityType(in);
-                ActivityType type = activityTypeRepo.findByCodeIgnoreCase(mc.code())
-                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ActivityType не найден: " + mc.code()));
-
-                int sortOrder = in.sortOrder() != null ? in.sortOrder() : counter.addAndGet(10);
-
-                criterionRepo.save(AchievementCriterion.builder()
-                        .achievement(a)
-                        .activityType(type)
-                        .requiredCount(mc.requiredCount())
-                        .withinDays(in.withinDays())
-                        .descriptionOverride(in.descriptionOverride())
-                        .sortOrder(sortOrder)
-                        .build());
-            });
-        }
-
-        // Файлы: если пришли — заменить
-        if (iconFile != null) {
-            if (iconFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Иконка пуста");
-            String iconName = sanitize(iconFile.getOriginalFilename());
-            Asset icon = uploadAndSave(iconFile, "icons/" + iconName);
-            a.setIcon(icon);
-        }
-
-        if (animationFile != null) {
-            if (animationFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Анимация пуста");
-            String animName = sanitize(animationFile.getOriginalFilename());
-            Asset animation = uploadAndSave(animationFile, "animations/" + animName);
-            a.setAnimation(animation);
-        }
-
-        Achievement saved = achievementRepo.save(a); // ⚡ теперь сохраняем в новую переменную
-
-        // Возвратим DTO в том же формате, что при создании
-        UUID anySectionId = saved.getSections() == null || saved.getSections().isEmpty()
-                ? req.sectionId().orElse(null)
-                : saved.getSections().iterator().next().getId();
-
-        if (anySectionId == null) {
-            throw new ResponseStatusException(BAD_REQUEST,
-                    "У ачивки не определён раздел. Укажите sectionId или привяжите категории.");
-        }
-
-        return new AchievementDto(
-                saved.getId(),
-                saved.getTitle(),
-                saved.getShortDescription(),
-                saved.getDescriptionMd(),
-                anySectionId,
-                saved.getIcon() != null ? saved.getIcon().getId() : null,
-                saved.getVisibility().name(),
-                saved.getActive()
-        );
     }
     @Transactional
     public UserAchievementGrantDto grantAchievementToUser(UUID userId, UUID achievementId) {
