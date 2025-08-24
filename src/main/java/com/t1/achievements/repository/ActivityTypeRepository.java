@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface ActivityTypeRepository extends JpaRepository<ActivityType, UUID> {
     Optional<ActivityType> findByCodeIgnoreCase(String code);
     boolean existsByCodeIgnoreCase(String code);
+    Optional<ActivityType> findByCode(String code);
+
 
     @Query("select t from ActivityType t where t.active = true")
     List<ActivityType> findAllActive();

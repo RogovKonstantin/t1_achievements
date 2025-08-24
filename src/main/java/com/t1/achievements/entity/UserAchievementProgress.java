@@ -2,6 +2,8 @@ package com.t1.achievements.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,7 +24,7 @@ public class UserAchievementProgress {
     @Column(nullable = false) private Integer currentStep = 0;
 
     @Column(nullable = false) private Integer totalSteps = 1;
-
+    @UpdateTimestamp
     @Column(nullable = false) private Instant updatedAt = Instant.now();
 
     @PreUpdate void touch() { this.updatedAt = Instant.now(); }

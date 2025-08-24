@@ -12,4 +12,5 @@ public interface UserAchievementProgressRepository extends JpaRepository<UserAch
     Optional<UserAchievementProgress> findByUserIdAndAchievementId(UUID userId, UUID achievementId);
     boolean existsByUserIdAndAchievementId(UUID userId, UUID achievementId);
     void deleteByUserIdAndAchievementId(UUID userId, UUID achievementId);
+    List<UserAchievementProgress> findAllByAchievement_Id(UUID achievementId);
 }

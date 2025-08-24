@@ -33,9 +33,6 @@ public class ActivityLog {
     @Column(nullable = false) private String sourceSystem = "";
     @Column(nullable = false) private String sourceEventId = "";
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb", nullable = false)
-    private Map<String, Object> payload = Map.of();
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();

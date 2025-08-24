@@ -8,19 +8,22 @@ import com.t1.achievements.controller.api.AchievementAdminApi;
 import com.t1.achievements.dto.*;
 import com.t1.achievements.dto.admin.AchievementAdminFullDto;
 import com.t1.achievements.dto.admin.UserAchievementGrantDto;
+import com.t1.achievements.exception.StatusResponse;
 import com.t1.achievements.service.AchievementAdminService;
+import com.t1.achievements.service.AchievementProgressService;
 import com.t1.achievements.service.AdminAchievementQueryService;
+import com.t1.achievements.service.AdminAchievementSeedService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -34,6 +37,8 @@ public class AchievementAdminController implements AchievementAdminApi {
 
     private final AchievementAdminService service;
     private final AdminAchievementQueryService queryService;
+    private final AdminAchievementSeedService seedService;
+    private final AchievementProgressService progressService;
 
     @Override
     public PageResponse<UserListItemDto> getHolders(UUID achievementId, @ParameterObject Pageable pageable) {
@@ -86,4 +91,29 @@ public class AchievementAdminController implements AchievementAdminApi {
         service.revokeAchievementFromUser(userId, achievementId);
     }
 
+    @Operation(summary = "Инициализировать прогресс 0/N для всех пользователей (массово)")
+    @PostMapping("/{achievementId}/seed-progress")
+    public ResponseEntity<StatusResponse> seedProgress(
+            @PathVariable @NotNull UUID achievementId,
+            @RequestParam(defaultValue = "true") boolean reset // по умолчанию перезаписываем на 0
+    ) {
+        var res = seedService.seedProgressZero(achievementId, reset);
+        return ResponseEntity.ok(new StatusResponse(
+                "ok",
+                "processed=%d, created=%d, updated=%d, totalSteps=%d"
+                        .formatted(res.processedUsers(), res.created(), res.updated(), res.totalSteps())
+        ));
+    }
+
+    @Operation(summary = "Ручной пересчёт прогресса пользователя по ачивке")
+    @PostMapping("/{achievementId}/recalc/{userId}")
+    public ResponseEntity<StatusResponse> recalcForUser(
+            @PathVariable UUID achievementId,
+            @PathVariable UUID userId
+    ) {
+        progressService.recalcForUserAndAchievement(userId, achievementId);
+        return ResponseEntity.ok(new StatusResponse("ok", "recalculated"));
+    }
 }
+
+

@@ -133,7 +133,9 @@ public class DataInitializer {
                         new ActivityType(null, "EDU_ARCH_HELP", "Помощь в разработке обучающих программ", null, "MANUAL", true, Instant.now()),
                         new ActivityType(null, "FOCUS_GROUP", "Участие в фокус-группе/исследовании", null, "MANUAL", true, Instant.now()),
                         new ActivityType(null, "PRO_ARTICLE", "Публикация статьи в профильном издании", null, "MANUAL", true, Instant.now()),
-                        new ActivityType(null, "IT_CAMP_VOL", "Волонтёр ИТ-Лагеря", null, "MANUAL", true, Instant.now())
+                        new ActivityType(null, "IT_CAMP_VOL", "Волонтёр ИТ-Лагеря", null, "MANUAL", true, Instant.now()),
+                        new ActivityType(null,"TEST_1_PASSED","пройден тест 1",null,"AUTO",true,Instant.now()),
+                        new ActivityType(null,"TEST_2_PASSED","пройден тест 2",null,"AUTO",true,Instant.now())
                 )
         );
 
@@ -331,7 +333,6 @@ public class DataInitializer {
                 .occurredAt(when)
                 .sourceSystem(type.getSourceSystem() == null ? "" : type.getSourceSystem())
                 .sourceEventId(UUID.randomUUID().toString())
-                .payload(Map.of("note", "seed", "rand", rnd.nextInt(1000)))
                 .build();
     }
 

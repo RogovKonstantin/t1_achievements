@@ -28,4 +28,7 @@ public interface AchievementCriterionRepository extends JpaRepository<Achievemen
     @Modifying
     @Query("delete from AchievementCriterion c where c.achievement.id = :achievementId")
     void deleteByAchievementId(UUID achievementId);
+
+    List<AchievementCriterion> findByActivityType_Id(UUID activityTypeId);
+
 }

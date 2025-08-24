@@ -5,6 +5,8 @@ import lombok.*;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -25,7 +27,7 @@ public class UserAchievement {
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "achievement_id", nullable = false)
     private Achievement achievement;
-
+@CreationTimestamp
     @Column(nullable = false)
     private Instant awardedAt = Instant.now();
 
