@@ -123,7 +123,6 @@ public class ProfileAchievementsService {
 
     @Transactional(readOnly = true)
     public ActivityFeedDto getActivity(UUID userId) {
-        // 404 если пользователь не существует/не активен
         userRepo.findById(userId).orElseThrow(() ->
                 new ResponseStatusException(NOT_FOUND, "Пользователь не найден"));
 

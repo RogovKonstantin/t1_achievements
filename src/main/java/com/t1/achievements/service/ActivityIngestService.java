@@ -1,4 +1,3 @@
-// src/main/java/com/t1/achievements/service/ActivityIngestService.java
 package com.t1.achievements.service;
 
 import com.t1.achievements.entity.ActivityLog;
@@ -47,11 +46,10 @@ public class ActivityIngestService {
                 .activityType(type)
                 .occurredAt(Instant.now())
                 .sourceSystem("tests-frontend")
-                .sourceEventId("") // если есть id события на фронте/трекере — подставь
+                .sourceEventId("")
                 .build();
         activityLogRepo.save(log);
 
-        // Точечный пересчёт по всем ачивкам, где фигурирует этот ActivityType
         progressService.recalculateForUserByActivityType(user, type);
     }
 }

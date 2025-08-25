@@ -28,7 +28,6 @@ public class AdminStatsService {
     @Transactional(readOnly = true)
     public AdminStatsDto getDashboardStats() {
         long totalAchievements = achievementRepo.count();
-        // активные ачивки есть через твой метод findAllActiveWithDeps()
         int activeAchievements = achievementRepo.findAllActiveWithDeps().size();
         long blockedAchievements = totalAchievements - activeAchievements;
         long availableAchievements = activeAchievements;
@@ -36,7 +35,6 @@ public class AdminStatsService {
         long sectionsCount = sectionRepo.findByActiveTrueOrderBySortOrderAsc().size();
         long activeUsers = Math.max(0, userRepo.countActive());
 
-        // суммарное число награждений (всё время) — из уже имеющейся агрегации
         Map<UUID, Long> awardedCounts = userAchRepo.countAwardedByAchievement()
                 .stream()
                 .collect(Collectors.toMap(
@@ -45,19 +43,15 @@ public class AdminStatsService {
                 ));
         long awardsTotal = awardedCounts.values().stream().mapToLong(Long::longValue).sum();
 
-        // Среднее число ачивок на активного пользователя
         double avgPerUser = activeUsers == 0 ? 0.0 : (double) awardsTotal / (double) activeUsers;
 
-        // Покрытие пользователей (у кого есть хотя бы одна ачивка)
         long usersWithAnyAwards = userAchRepo.countUsersWithAnyAwards();
         double coverage = (activeUsers == 0) ? 0.0 : 100.0 * (double) usersWithAnyAwards / (double) activeUsers;
 
-        // За месяц
         Instant startOfMonth = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1)
                 .atStartOfDay().toInstant(ZoneOffset.UTC);
         long awardsThisMonth = userAchRepo.countAwardedSince(startOfMonth);
 
-        // ТОП-5 по популярности (всё время)
         var topAllTime = userAchRepo.findTopAwardedAllTime(PageRequest.of(0, 5));
         Map<UUID, Achievement> byIdAll = achievementRepo.findAllById(
                 topAllTime.stream().map(UserAchievementRepository.TopAward::getAchievementId).toList()
@@ -68,7 +62,6 @@ public class AdminStatsService {
                         t.getCnt()))
                 .toList();
 
-        // ТОП-5 за 30 дней
         Instant from30 = Instant.now().minus(Duration.ofDays(30));
         var top30 = userAchRepo.findTopAwardedSince(from30, PageRequest.of(0, 5));
         Map<UUID, Achievement> byId30 = achievementRepo.findAllById(
@@ -80,8 +73,6 @@ public class AdminStatsService {
                         t.getCnt()))
                 .toList();
 
-        // Самые "редкие" активные ачивки (минимальная доля обладателей)
-        // редкость = 100 * (awardedCount / totalUsers)
         long totalUsers = Math.max(1, userRepo.countActive());
         Set<UUID> activeAchIds = achievementRepo.findAllActiveWithDeps().stream()
                 .map(Achievement::getId).collect(Collectors.toSet());
@@ -99,7 +90,6 @@ public class AdminStatsService {
                 .limit(5)
                 .toList();
 
-        // По месяцам — последние 6 месяцев
         Instant from6m = YearMonth.now(ZoneOffset.UTC).minusMonths(5)
                 .atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         var monthBuckets = userAchRepo.countAwardsByMonthSince(from6m);

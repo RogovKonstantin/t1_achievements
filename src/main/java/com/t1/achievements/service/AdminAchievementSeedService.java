@@ -1,4 +1,3 @@
-// src/main/java/com/t1/achievements/service/AdminAchievementSeedService.java
 package com.t1.achievements.service;
 
 import com.t1.achievements.entity.Achievement;

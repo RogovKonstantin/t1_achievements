@@ -1,4 +1,3 @@
-// com.t1.achievements.dto.SectionDto
 package com.t1.achievements.dto;
 
 import lombok.Builder;

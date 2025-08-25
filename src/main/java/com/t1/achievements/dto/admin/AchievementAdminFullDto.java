@@ -15,14 +15,14 @@ public record AchievementAdminFullDto(
         String descriptionMd,
         Integer points,
         Boolean repeatable,
-        String visibility,       // enum как строка
+        String visibility,
         String iconUrl,
         String animationUrl,
         Double holdersPercent,
         Boolean active,
         Instant createdAt,
         Instant updatedAt,
-        Integer totalSteps,      // суммарно по критериям, минимум 1
+        Integer totalSteps,
         List<AchievementCriterionDto> criteria,
         List<SectionRefDto> sections
 ) {}

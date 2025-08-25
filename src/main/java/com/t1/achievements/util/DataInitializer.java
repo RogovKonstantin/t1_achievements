@@ -70,7 +70,7 @@ public class DataInitializer {
             admins.add(userRepo.save(
                     User.builder()
                             .username("admin" + i)
-                            .password(hashed) // ← уже зашифровано
+                            .password(hashed)
                             .fullName("Admin " + i)
                             .email("admin" + i + "@t1.local")
                             .position("Administrator")

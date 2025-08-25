@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class AssetStorageService {
 
     private final MinioClient minio;
-    private final AssetRepository assetRepo; // NEW
+    private final AssetRepository assetRepo;
 
     @Value("${minio.bucket}")
     private String defaultBucket;

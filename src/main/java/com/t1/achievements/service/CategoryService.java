@@ -1,4 +1,3 @@
-// com.t1.achievements.service.CategoryService
 package com.t1.achievements.service;
 
 import com.t1.achievements.dto.SectionShortDto;

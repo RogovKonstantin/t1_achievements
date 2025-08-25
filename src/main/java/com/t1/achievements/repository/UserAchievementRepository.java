@@ -68,9 +68,8 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
             "order by cnt desc")
     List<TopAward> findTopAwardedSince(@Param("from") Instant from, Pageable pageable);
 
-    // Для postgres-агрегации по месяцам
     interface MonthBucket {
-        String getMonth(); // формат YYYY-MM
+        String getMonth();
         long getCnt();
     }
 

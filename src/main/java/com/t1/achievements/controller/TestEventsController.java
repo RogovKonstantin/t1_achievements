@@ -1,4 +1,3 @@
-// src/main/java/com/t1/achievements/controller/TestEventsController.java
 package com.t1.achievements.controller;
 
 import com.t1.achievements.RR.TestPassedEventRequest;

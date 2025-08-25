@@ -1,4 +1,3 @@
-// com.t1.achievements.RR.CreateAchievementRequest
 package com.t1.achievements.RR;
 
 import jakarta.validation.Valid;
@@ -9,7 +8,9 @@ import java.util.UUID;
 public record CreateAchievementRequest(
         @NotBlank String title,
         @NotBlank String descriptionMd,
-        @NotNull  @Size(min = 1) List<@NotNull UUID> sectionIds,           // ⬅️ несколько категорий
-        @NotNull  @Size(min = 1) List<@Valid CriterionInput> criteria,
-        @NotNull  @PositiveOrZero Integer points
+        @NotNull @Size(min = 1) List<@NotNull UUID> sectionIds,
+        @NotNull @Size(min = 1) List<@Valid CriterionInput> criteria,
+        @NotNull @PositiveOrZero Integer points,
+        Boolean massSeed
+
 ) {}

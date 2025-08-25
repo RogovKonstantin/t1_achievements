@@ -18,7 +18,7 @@ public class AdminAchievementQueryService {
 
     private final AchievementRepository achievementRepo;
     private final AchievementCriterionRepository criterionRepo;
-    private final UserRepository userRepo;          // <-- добавили
+    private final UserRepository userRepo;
     private final AssetStorageService assets;
 
     private String url(Asset a) { return a == null ? null : assets.publicUrl(a); }
@@ -27,7 +27,6 @@ public class AdminAchievementQueryService {
     public List<AchievementAdminFullDto> listAllAchievementsFull() {
         List<Achievement> achievements = achievementRepo.findAll();
 
-        // totalSteps (агрегат)
         Set<UUID> achIds = achievements.stream().map(Achievement::getId).collect(Collectors.toSet());
         Map<UUID, Integer> totalStepsByAch = criterionRepo
                 .sumRequiredByAchievementIds(achIds).stream()
@@ -36,7 +35,6 @@ public class AdminAchievementQueryService {
                         r -> Optional.ofNullable(r.getTotalRequired()).orElse(1)
                 ));
 
-        // подтянуть критерии (как у тебя)
         Map<UUID, List<AchievementCriterion>> critByAch = new HashMap<>();
         for (UUID aid : achIds) {
             List<AchievementCriterion> crits = criterionRepo.findByAchievementId(aid);
@@ -44,10 +42,8 @@ public class AdminAchievementQueryService {
             critByAch.put(aid, crits);
         }
 
-        // --- НОВОЕ: держатели и проценты ---
-        long activeUsers = Math.max(0, userRepo.countActive()); // защита от 0
+        long activeUsers = Math.max(0, userRepo.countActive());
 
-        // achievementId -> holdersCount
         Map<UUID, Long> holdersByAch = new HashMap<>();
         for (Object[] row : userRepo.countHoldersGrouped()) {
             UUID aid = (UUID) row[0];

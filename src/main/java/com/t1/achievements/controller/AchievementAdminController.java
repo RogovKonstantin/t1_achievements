@@ -95,7 +95,7 @@ public class AchievementAdminController implements AchievementAdminApi {
     @PostMapping("/{achievementId}/seed-progress")
     public ResponseEntity<StatusResponse> seedProgress(
             @PathVariable @NotNull UUID achievementId,
-            @RequestParam(defaultValue = "true") boolean reset // по умолчанию перезаписываем на 0
+            @RequestParam(defaultValue = "true") boolean reset
     ) {
         var res = seedService.seedProgressZero(achievementId, reset);
         return ResponseEntity.ok(new StatusResponse(

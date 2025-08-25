@@ -1,4 +1,3 @@
-// src/main/java/com/t1/achievements/service/AchievementProgressService.java
 package com.t1.achievements.service;
 
 import com.t1.achievements.entity.*;
@@ -21,15 +20,12 @@ public class AchievementProgressService {
     private final UserAchievementProgressRepository progressRepo;
     private final UserAchievementRepository userAchRepo;
 
-    /**
-     * Пересчитать прогресс по всем ачивкам, содержащим критерии с данным ActivityType.
-     */
+
     @Transactional
     public void recalculateForUserByActivityType(User user, ActivityType type) {
         var criteria = criterionRepo.findByActivityType_Id(type.getId());
         if (criteria.isEmpty()) return;
 
-        // Собираем ачивки, где встречается этот критерий
         Set<UUID> achievementIds = new HashSet<>();
         for (var c : criteria) {
             achievementIds.add(c.getAchievement().getId());
@@ -39,22 +35,17 @@ public class AchievementProgressService {
         }
     }
 
-    /**
-     * Полный пересчёт прогресса пользователя по конкретной ачивке.
-     * Если закрыта — выдаём (если ещё не выдана).
-     */
+
     @Transactional
     public void recalcForUserAndAchievement(UUID userId, UUID achievementId) {
         Achievement ach = achievementRepo.findById(achievementId).orElseThrow();
         List<AchievementCriterion> criteria = criterionRepo.findByAchievementId(achievementId);
 
-        // Считаем totalRequired
         int totalRequired = criteria.stream()
                 .mapToInt(AchievementCriterion::getRequiredCount)
                 .sum();
 
-        // Считаем текущие шаги
-        User stubUser = User.builder().id(userId).build(); // чтобы не тянуть пользователя полностью
+        User stubUser = User.builder().id(userId).build();
         int current = 0;
         for (var c : criteria) {
             Instant after = null;
@@ -65,7 +56,6 @@ public class AchievementProgressService {
             current += (int) Math.min(done, c.getRequiredCount());
         }
 
-        // Обновляем/создаём progress
         var progressOpt = progressRepo.findByUserIdAndAchievementId(userId, achievementId);
         UserAchievementProgress progress = progressOpt.orElseGet(() -> UserAchievementProgress.builder()
                 .user(stubUser)
@@ -78,7 +68,6 @@ public class AchievementProgressService {
         progress.setCurrentStep(current);
         progressRepo.save(progress);
 
-        // Если выполнено полностью — выдаём награду (если ещё не)
         if (current >= totalRequired && totalRequired > 0) {
             if (!userAchRepo.existsByUserIdAndAchievementId(userId, achievementId)) {
                 userAchRepo.save(UserAchievement.builder()

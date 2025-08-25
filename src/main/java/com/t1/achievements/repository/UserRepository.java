@@ -1,9 +1,7 @@
 package com.t1.achievements.repository;
 
-
 import com.t1.achievements.entity.User;
 import org.springframework.context.annotation.Role;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

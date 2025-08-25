@@ -10,6 +10,7 @@ import com.t1.achievements.repository.*;
 import io.minio.ObjectWriteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import static org.springframework.http.HttpStatus.CONFLICT;
-
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -43,11 +41,13 @@ public class AchievementAdminService {
     private final AssetStorageService storage;
     private final UserAchievementRepository userAchRepo;
     private final UserAchievementProgressRepository progressRepo;
+    private final ApplicationEventPublisher publisher;
 
 
     private final AssetStorageService assets;
     @Value("${minio.bucket}")
     private String bucket;
+
     private String assetUrl(Asset a) {
         return assets.publicUrl(a);
     }
@@ -146,7 +146,6 @@ public class AchievementAdminService {
         return list;
     }
 
-    // com.t1.achievements.service.AchievementAdminService  (фрагменты)
 
     @Transactional
     public AchievementDto createAchievement(CreateAchievementRequest req,
@@ -157,7 +156,6 @@ public class AchievementAdminService {
             throw new ResponseStatusException(BAD_REQUEST, "Иконка обязательна");
         }
 
-        // ⬇️ грузим ВСЕ секции сразу
         List<UUID> sectionIds = req.sectionIds();
         var sections = sectionRepo.findAllById(sectionIds);
         if (sections.size() != sectionIds.size()) {
@@ -185,7 +183,7 @@ public class AchievementAdminService {
                 .repeatable(false)
                 .build();
 
-        a.setSections(new HashSet<>(sections));   // ⬅️ сразу все секции
+        a.setSections(new HashSet<>(sections));
         a = achievementRepo.save(a);
 
         if (req.criteria() != null) {
@@ -203,6 +201,9 @@ public class AchievementAdminService {
                         .sortOrder(in.sortOrder() != null ? in.sortOrder() : (++i) * 10)
                         .build());
             }
+        }
+        if (Boolean.TRUE.equals(req.massSeed())) {
+            publisher.publishEvent(new AchievementCreatedEvent(a.getId(), true));
         }
 
         return new AchievementDto(
@@ -234,7 +235,6 @@ public class AchievementAdminService {
             a.setPoints(points);
         });
 
-        // ⬇️ Если прислали sectionIds — ПОЛНОСТЬЮ заменяем привязки
         if (req.sectionIds().isPresent()) {
             List<UUID> ids = req.sectionIds().get();
             List<Section> sections = ids.isEmpty() ? List.of() : sectionRepo.findAllById(ids);
@@ -244,7 +244,6 @@ public class AchievementAdminService {
             a.setSections(new HashSet<>(sections));
         }
 
-        // Критерии: если поле прислали — пересобираем все
         if (req.criteria().isPresent()) {
             List<CriterionInput> list = req.criteria().get();
             if (list == null || list.isEmpty()) {
@@ -268,7 +267,6 @@ public class AchievementAdminService {
             });
         }
 
-        // Файлы: если пришли — заменить
         if (iconFile != null) {
             if (iconFile.isEmpty()) throw new ResponseStatusException(BAD_REQUEST, "Иконка пуста");
             String iconName = sanitize(iconFile.getOriginalFilename());
@@ -305,7 +303,7 @@ public class AchievementAdminService {
         Section finalS = s;
         req.name().ifPresent(name -> {
             finalS.setName(name);
-            finalS.setCode(name.toUpperCase(Locale.ROOT)); // логика как при создании
+            finalS.setCode(name.toUpperCase(Locale.ROOT));
         });
 
         req.description().ifPresent(s::setDescription);
@@ -321,13 +319,14 @@ public class AchievementAdminService {
                 .active(s.getActive())
                 .build();
     }
+
     @Transactional
     public UserAchievementGrantDto grantAchievementToUser(UUID userId, UUID achievementId) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException( "Пользователь не найден"));
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден"));
 
         Achievement a = achievementRepo.findById(achievementId)
-                .orElseThrow(() -> new NotFoundException( "Ачивка не найдена"));
+                .orElseThrow(() -> new NotFoundException("Ачивка не найдена"));
 
         if (Boolean.FALSE.equals(a.getRepeatable())
                 && userAchRepo.existsByUserIdAndAchievementId(user.getId(), a.getId())) {
@@ -335,7 +334,6 @@ public class AchievementAdminService {
         }
 
         Instant now = Instant.now();
-
 
 
         UserAchievement ua = UserAchievement.builder()
@@ -350,9 +348,10 @@ public class AchievementAdminService {
         return new UserAchievementGrantDto(
                 user.getId(),
                 a.getId(),
-                DateTimeFormatter.ISO_INSTANT.format(now) // форматируем Instant в строку ISO-8601
+                DateTimeFormatter.ISO_INSTANT.format(now)
         );
     }
+
     @Transactional
     public void revokeAchievementFromUser(UUID userId, UUID achievementId) {
         if (!userRepo.existsById(userId)) {
@@ -369,13 +368,10 @@ public class AchievementAdminService {
     }
 
 
-
-
     private String sanitize(String filename) {
         if (filename == null) return "file";
         String name = filename.replace("\\", "/");
-        name = name.substring(name.lastIndexOf('/') + 1); // только basename
-        // не трогаем регистр/расширение, уберём только совсем опасные символы
+        name = name.substring(name.lastIndexOf('/') + 1);
         return name.replaceAll("[\\r\\n\\t]", "_");
     }
 
@@ -384,7 +380,6 @@ public class AchievementAdminService {
             byte[] bytes = file.getBytes();
             String ct = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
 
-            // используем те же методы, что и сидер
             ObjectWriteResponse resp = "image/png".equalsIgnoreCase(ct)
                     ? storage.uploadPng(bytes, objectKey)
                     : storage.upload(bytes, objectKey, ct);
@@ -408,14 +403,15 @@ public class AchievementAdminService {
         if ("TENURE_YEARS".equals(ui)) return new MappedCriterion("TENURE_DAYS", Math.toIntExact((long) val * 365));
         return new MappedCriterion(ui, val);
     }
-    private record MappedCriterion(String code, int requiredCount) {}
+
+    private record MappedCriterion(String code, int requiredCount) {
+    }
 
 
     private String autoShort(String md) {
         if (md == null) return null;
-        // грубо уберём Markdown и обрежем
-        String s = md.replaceAll("\\[(.+?)\\]\\(.+?\\)", "$1") // ссылки
-                .replaceAll("[*_`#>]+", "")               // базовые маркдауны
+        String s = md.replaceAll("\\[(.+?)\\]\\(.+?\\)", "$1")
+                .replaceAll("[*_`#>]+", "")
                 .replaceAll("\\s+", " ")
                 .trim();
         int max = 180;
