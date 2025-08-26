@@ -97,6 +97,10 @@ public class AdminStatsService {
                 .map(mb -> new MonthlyCountDto(mb.getMonth(), mb.getCnt()))
                 .toList();
 
+        LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
+        List<DailyCountDto> visitsByDay30d = syntheticVisitsForRange(todayUtc.minusDays(29), todayUtc);
+        TrendDeltaDto visitsChange30d = computeTrendDelta(todayUtc);
+
         return new AdminStatsDto(
                 totalAchievements,
                 blockedAchievements,
@@ -112,11 +116,52 @@ public class AdminStatsService {
                 topPopularAllTime,
                 topPopular30d,
                 rarestActive,
-                awardsByMonth
+                awardsByMonth,
+
+                visitsByDay30d,
+                visitsChange30d
         );
     }
 
-    private double round2(double v) {
-        return Math.round(v * 100.0) / 100.0;
+    private double round2(double v) { return Math.round(v * 100.0) / 100.0; }
+    private double round1(double v) { return Math.round(v * 10.0) / 10.0; }
+
+
+    private TrendDeltaDto computeTrendDelta(LocalDate todayUtc) {
+        List<DailyCountDto> curr = syntheticVisitsForRange(todayUtc.minusDays(29), todayUtc);
+        List<DailyCountDto> prev = syntheticVisitsForRange(todayUtc.minusDays(59), todayUtc.minusDays(30));
+
+        int currSum = curr.stream().mapToInt(DailyCountDto::count).sum();
+        int prevSum = Math.max(0, prev.stream().mapToInt(DailyCountDto::count).sum());
+
+        double pct = prevSum == 0 ? 0.0 : 100.0 * (currSum - prevSum) / (double) prevSum;
+        pct = round1(pct);
+        String signed = (pct >= 0 ? "+" : "") + pct + "%";
+        return new TrendDeltaDto(currSum, prevSum, pct, signed);
+    }
+
+
+    private List<DailyCountDto> syntheticVisitsForRange(LocalDate fromInclusive, LocalDate toInclusive) {
+        List<DailyCountDto> out = new ArrayList<>();
+        for (LocalDate d = fromInclusive; !d.isAfter(toInclusive); d = d.plusDays(1)) {
+            out.add(new DailyCountDto(d, synthCountFor(d)));
+        }
+        return out;
+    }
+
+    private int synthCountFor(LocalDate d) {
+        double base = 520.0;
+
+        double w = (d.getDayOfWeek().getValue() % 7) / 7.0; // 0..~1
+        double weekly = 80.0 * Math.sin(2 * Math.PI * w - 0.8); // сдвиг фазы
+
+        double monthly = 40.0 * Math.sin(2 * Math.PI * ((d.getDayOfYear() % 30) / 30.0));
+
+        long seed = d.toEpochDay() * 31 + 12345;
+        SplittableRandom r = new SplittableRandom(seed);
+        double noise = r.nextInt(-25, 26);
+
+        int val = (int) Math.round(base + weekly + monthly + noise);
+        return Math.max(120, Math.min(1500, val));
     }
 }

@@ -16,14 +16,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserQueryService {
 
     private final UserRepository userRepo;
+    private final AssetStorageService assetStorage;
 
-    private String assetUrl(Asset a) { return a == null ? null : "/assets/" + a.getId(); }
+    private String assetUrl(Asset a) {
+        return assetStorage.publicUrl(a);
+    }
 
     @Transactional(readOnly = true)
     public PageResponse<UserListItemDto> listUsers(Pageable pageable) {
         Page<User> page = userRepo.findByActiveTrue(pageable);
         return PageResponse.from(page.map(u -> new UserListItemDto(
-                u.getId(), u.getFullName(), u.getDepartment(), u.getPosition(), assetUrl(u.getAvatar())
+                u.getId(),
+                u.getFullName(),
+                u.getDepartment(),
+                u.getPosition(),
+                assetUrl(u.getAvatar())
         )));
     }
 }

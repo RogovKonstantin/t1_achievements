@@ -37,18 +37,48 @@ public class DataInitializer {
     private final AssetStorageService storage;
     private final PasswordEncoder passwordEncoder;
 
-
-    private record Crit(String activityCode, int required, Integer withinDays) {
-    }
-
+    private record Crit(String activityCode, int required, Integer withinDays) {}
     private record AchSpec(String code, String title, String shortDesc, boolean manual,
-                           List<String> sectionCodes, List<Crit> criteria) {
-    }
+                           List<String> sectionCodes, List<Crit> criteria) {}
 
     private static final ZoneId Z = ZoneId.systemDefault();
     private final Random rnd = new Random(42);
+
     @Value("${minio.bucket}")
     private String bucket;
+
+    // ====== Настройки для аватаров (добавь файлы в resources/sample-avatars/) ======
+    private static final List<String> AVATAR_POOL = List.of(
+            "sample-avatars/ru-01.jpg", "sample-avatars/ru-02.jpg", "sample-avatars/ru-03.jpg",
+            "sample-avatars/ru-04.jpg", "sample-avatars/ru-05.jpg", "sample-avatars/ru-06.jpg",
+            "sample-avatars/ru-07.jpg"
+    );
+    private int avatarCursor = 0;
+
+    // Более реалистичные должности/отделы
+    private static final List<String> POSITIONS = List.of(
+            "Разработчик", "Старший разработчик", "Тестировщик", "DevOps-инженер",
+            "Аналитик", "Бизнес-аналитик", "Проектный менеджер", "Дизайнер",
+            "Системный администратор", "Data Engineer", "Data Scientist", "Технический писатель"
+    );
+    private static final List<String> DEPARTMENTS = List.of(
+            "Разработка", "Тестирование", "DevOps", "Аналитика",
+            "Проектный офис", "Дизайн", "HR", "Маркетинг", "Финансы", "Операции"
+    );
+
+    // 40 реальных русских имён (ФИО)
+    private static final List<String> RU_FULLNAMES = List.of(
+            "Иван Петров", "Мария Иванова", "Сергей Смирнов", "Анна Кузнецова",
+            "Дмитрий Соколов", "Екатерина Морозова", "Андрей Попов", "Ольга Васильева",
+            "Павел Новиков", "Елена Павлова", "Никита Орлов", "Татьяна Сергеева",
+            "Артём Фёдоров", "Наталья Киселёва", "Игорь Алексеев", "Виктория Громова",
+            "Роман Николаев", "Юлия Макарова", "Кирилл Захаров", "Светлана Богданова",
+            "Михаил Комаров", "Алина Волкова", "Владимир Жуков", "Ксения Медведева",
+            "Александр Емельянов", "Дарья Никитина", "Константин Беляев", "Полина Сафонова",
+            "Григорий Романов", "Анастасия Карпова", "Тимур Васильев", "Валерия Белова",
+            "Денис Гусев", "Вероника Фролова", "Степан Калинин", "Ирина Сорокина",
+            "Максим Ковалёв", "Лилия Антонова", "Евгений Данилов", "Наталия Кузьмина"
+    );
 
     private Role upsertRole(String code, String name) {
         return roleRepo.findByCode(code)
@@ -60,47 +90,51 @@ public class DataInitializer {
     public void init() throws Exception {
         if (userRepo.count() > 0 || achievementRepo.count() > 0) return;
 
-        Role admin = upsertRole("ADMIN", "Administrator");
-        Role userRole = upsertRole("USER", "User");
+        Role admin = upsertRole("ADMIN", "Администратор");
+        Role userRole = upsertRole("USER", "Пользователь");
 
-        List<User> admins = new ArrayList<>();
         String hashed = passwordEncoder.encode("password");
 
-        for (int i = 1; i <= 3; i++) {
-            admins.add(userRepo.save(
-                    User.builder()
-                            .username("admin" + i)
-                            .password(hashed)
-                            .fullName("Admin " + i)
-                            .email("admin" + i + "@t1.local")
-                            .position("Administrator")
-                            .department("IT")
-                            .grade(5)
-                            .active(true)
-                            .role(admin)
-                            .hireDate(LocalDate.now().minusYears(3 + i))
-                            .phone(randomPhone())
-                            .avatar(createAvatar("admin" + i))
-                            .build()
-            ));
-        }
+        // ====== 1 админ с реальным именем ======
+        List<User> admins = new ArrayList<>();
+        String adminName = "Алексей Кузнецов";
+        String adminUsername = "admin";
+        admins.add(userRepo.save(
+                User.builder()
+                        .username(adminUsername)
+                        .password(hashed)
+                        .fullName(adminName)
+                        .email(adminUsername + "@t1.local")
+                        .position("Администратор систем")
+                        .department("IT")
+                        .grade(6)
+                        .active(true)
+                        .role(admin)
+                        .hireDate(LocalDate.now().minusYears(5))
+                        .phone(randomPhone())
+                        .avatar(uploadAvatarFromPool("admin"))
+                        .build()
+        ));
 
+        // ====== 40 обычных пользователей с русскими именами ======
         List<User> users = new ArrayList<>();
-        for (int i = 1; i <= 100; i++) {
+        int idx = 1;
+        for (String fullName : RU_FULLNAMES) {
+            String username = toUsername(fullName);
             users.add(userRepo.save(
                     User.builder()
-                            .username("user%03d".formatted(i))
+                            .username(username)
                             .password(hashed)
-                            .fullName("User %03d".formatted(i))
-                            .email("user%03d@t1.local".formatted(i))
-                            .position(sample(List.of("Developer", "Analyst", "QA", "DevOps", "PM", "Designer")))
-                            .department(sample(List.of("R&D", "Delivery", "HR", "Marketing", "Finance", "Ops")))
-                            .grade(1 + rnd.nextInt(5))
+                            .fullName(fullName)
+                            .email(username + "@t1.local")
+                            .position(sample(POSITIONS))
+                            .department(sample(DEPARTMENTS))
+                            .grade(1 + rnd.nextInt(6)) // 1..6
                             .active(true)
                             .role(userRole)
-                            .hireDate(LocalDate.now().minusDays(200 + rnd.nextInt(1200)))
+                            .hireDate(LocalDate.now().minusDays(220 + rnd.nextInt(1400)))
                             .phone(randomPhone())
-                            .avatar(createAvatar("user" + i))
+                            .avatar(uploadAvatarFromPool("user%02d".formatted(idx++)))
                             .build()
             ));
         }
@@ -177,7 +211,6 @@ public class DataInitializer {
                         List.of("PROJECTS"), List.of(new Crit("IT_CAMP_VOL", 1, null)))
         );
 
-
         Map<String, Achievement> achByCode = new LinkedHashMap<>();
         for (AchSpec spec : specs) {
             String code = spec.code();
@@ -237,13 +270,11 @@ public class DataInitializer {
             }
         }
 
-
         List<User> allUsers = new ArrayList<>();
         allUsers.addAll(admins);
         allUsers.addAll(users);
 
         List<ActivityLog> logs = new ArrayList<>();
-
         for (User u : allUsers) {
             int years = Period.between(u.getHireDate(), LocalDate.now()).getYears();
             years = Math.min(years, 5);
@@ -254,7 +285,6 @@ public class DataInitializer {
             if (rnd.nextDouble() < 0.6) {
                 logs.add(event(u, act.get("LMS_OBLIG_CLEAR"), daysAgo(rnd.nextInt(120))));
             }
-
             if (rnd.nextDouble() < 0.7) {
                 logs.add(event(u, act.get("PROFILE_100"), daysAgo(rnd.nextInt(60))));
             }
@@ -264,32 +294,23 @@ public class DataInitializer {
                 logs.add(event(u, act.get("HRLINK_MONTH_CLEAR"), daysAgo(30L * m + rnd.nextInt(5))));
             }
 
-            if (rnd.nextDouble() < 0.3) {
-                logs.add(event(u, act.get("VAC_BALANCE_OK"), daysAgo(30 + rnd.nextInt(300))));
-            }
-
-            if (rnd.nextDouble() < 0.15)
-                logs.add(event(u, act.get("CYBER_TOURNAMENT_WIN"), daysAgo(200 + rnd.nextInt(300))));
-            if (rnd.nextDouble() < 0.2)
-                logs.add(event(u, act.get("CYBER_TOURNAMENT_PRIZE"), daysAgo(100 + rnd.nextInt(300))));
-            if (rnd.nextDouble() < 0.12)
-                logs.add(event(u, act.get("MUSIC_GROUP_PERF"), daysAgo(50 + rnd.nextInt(400))));
-            if (rnd.nextDouble() < 0.18)
-                logs.add(event(u, act.get("INTERNAL_EVENT_HOST"), daysAgo(20 + rnd.nextInt(300))));
-            if (rnd.nextDouble() < 0.1) logs.add(event(u, act.get("HACK_CASE_AUTHOR"), daysAgo(60 + rnd.nextInt(300))));
-            if (rnd.nextDouble() < 0.2)
-                logs.add(event(u, act.get("BUGATHON_PARTICIPANT"), daysAgo(40 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.3)  logs.add(event(u, act.get("VAC_BALANCE_OK"), daysAgo(30 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.15) logs.add(event(u, act.get("CYBER_TOURNAMENT_WIN"), daysAgo(200 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.2)  logs.add(event(u, act.get("CYBER_TOURNAMENT_PRIZE"), daysAgo(100 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.12) logs.add(event(u, act.get("MUSIC_GROUP_PERF"), daysAgo(50 + rnd.nextInt(400))));
+            if (rnd.nextDouble() < 0.18) logs.add(event(u, act.get("INTERNAL_EVENT_HOST"), daysAgo(20 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.1)  logs.add(event(u, act.get("HACK_CASE_AUTHOR"), daysAgo(60 + rnd.nextInt(300))));
+            if (rnd.nextDouble() < 0.2)  logs.add(event(u, act.get("BUGATHON_PARTICIPANT"), daysAgo(40 + rnd.nextInt(300))));
             if (rnd.nextDouble() < 0.08) logs.add(event(u, act.get("EDU_ARCH_HELP"), daysAgo(80 + rnd.nextInt(300))));
             int fg = rnd.nextInt(7);
             for (int i = 0; i < fg; i++) logs.add(event(u, act.get("FOCUS_GROUP"), daysAgo(10 + rnd.nextInt(600))));
             if (rnd.nextDouble() < 0.12) logs.add(event(u, act.get("PRO_ARTICLE"), daysAgo(30 + rnd.nextInt(400))));
-            if (rnd.nextDouble() < 0.1) logs.add(event(u, act.get("IT_CAMP_VOL"), daysAgo(30 + rnd.nextInt(400))));
+            if (rnd.nextDouble() < 0.1)  logs.add(event(u, act.get("IT_CAMP_VOL"), daysAgo(30 + rnd.nextInt(400))));
         }
         activityLogRepo.saveAll(logs);
 
         computeProgressAndAwards(allUsers, specs, achByCode, act);
     }
-
 
     private Map<String, Section> saveSections(Map<String, Section> map) {
         Map<String, Section> out = new LinkedHashMap<>();
@@ -297,20 +318,35 @@ public class DataInitializer {
         return out;
     }
 
-    private Asset createAvatar(String keyPrefix) throws Exception {
-        String key = "avatars/" + keyPrefix + ".png";
-        byte[] bytes = storage.generateSquarePng(256, rnd.nextBoolean());
-        ObjectWriteResponse resp = storage.uploadPng(bytes, key);
+    // Загружаем аватар из пула ресурсов; если файла нет — генерируем PNG-квадрат
+    private Asset uploadAvatarFromPool(String keyPrefix) throws Exception {
+        String resPath = AVATAR_POOL.get(avatarCursor++ % AVATAR_POOL.size());
+        byte[] bytes = readResourceIfExists(resPath);
+        String ext = (resPath.endsWith(".png") ? "png" : "jpg");
+        String objectKey;
+        String contentType;
+        ObjectWriteResponse resp;
+        if (bytes != null) {
+            objectKey = "avatars/" + keyPrefix + "." + ext;
+            contentType = ("png".equals(ext) ? "image/png" : "image/jpeg");
+            resp = storage.upload(bytes, objectKey, contentType);
+        } else {
+            objectKey = "avatars/" + keyPrefix + ".png";
+            contentType = "image/png";
+            byte[] png = storage.generateSquarePng(256, rnd.nextBoolean());
+            resp = storage.uploadPng(png, objectKey);
+            bytes = (bytes == null ? storage.generateSquarePng(256, false) : bytes);
+            bytes = png; // для сохранения sizeBytes
+        }
         return assetRepo.save(Asset.builder()
                 .bucket(bucket)
-                .objectKey(key)
+                .objectKey(objectKey)
                 .versionId(Optional.ofNullable(resp.versionId()).orElse(""))
-                .contentType("image/png")
+                .contentType(contentType)
                 .sizeBytes((long) bytes.length)
                 .etag(resp.etag())
                 .build());
     }
-
 
     private Map<String, ActivityType> saveActivityTypes(List<ActivityType> list) {
         Map<String, ActivityType> out = new LinkedHashMap<>();
@@ -335,7 +371,6 @@ public class DataInitializer {
                 .sourceEventId(UUID.randomUUID().toString())
                 .build();
     }
-
 
     private void computeProgressAndAwards(List<User> users,
                                           List<AchSpec> specs,
@@ -408,7 +443,7 @@ public class DataInitializer {
                                     : "manual_seed"));
 
                     if (method == UserAchievement.Method.MANUAL) {
-                        b.awardedBy(sample(userRepo.findAll().subList(0, 3)));
+                        b.awardedBy(userRepo.findAll().get(0)); // единственный админ
                     }
 
                     userAchRepo.save(b.build());
@@ -416,6 +451,7 @@ public class DataInitializer {
             }
         }
     }
+
     private byte[] readResourceRequired(String resourceName) throws IOException {
         ClassPathResource res = new ClassPathResource(resourceName);
         if (!res.exists()) {
@@ -426,6 +462,19 @@ public class DataInitializer {
             return in.readAllBytes();
         }
     }
+
+    private byte[] readResourceIfExists(String resourceName) {
+        try {
+            ClassPathResource res = new ClassPathResource(resourceName);
+            if (!res.exists()) return null;
+            try (InputStream in = res.getInputStream()) {
+                return in.readAllBytes();
+            }
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     private String randomPhone() {
         int p1 = 100 + rnd.nextInt(900);
         int p2 = 100 + rnd.nextInt(900);
@@ -451,5 +500,53 @@ public class DataInitializer {
                 .build());
     }
 
-}
+    // ====== Транслитерация ФИО -> username/email (ivan.petrov) ======
+    private String toUsername(String fullNameRu) {
+        String[] parts = fullNameRu.trim().split("\\s+");
+        String base = (parts.length >= 2 ? parts[0] + "." + parts[1] : fullNameRu).toLowerCase(Locale.ROOT);
+        return translit(base).replaceAll("[^a-z0-9.]", "");
+    }
 
+    private String translit(String s) {
+        StringBuilder sb = new StringBuilder(s.length() * 2);
+        for (char ch : s.toCharArray()) {
+            switch (Character.toLowerCase(ch)) {
+                case 'а' -> sb.append("a");
+                case 'б' -> sb.append("b");
+                case 'в' -> sb.append("v");
+                case 'г' -> sb.append("g");
+                case 'д' -> sb.append("d");
+                case 'е' -> sb.append("e");
+                case 'ё' -> sb.append("yo");
+                case 'ж' -> sb.append("zh");
+                case 'з' -> sb.append("z");
+                case 'и' -> sb.append("i");
+                case 'й' -> sb.append("y");
+                case 'к' -> sb.append("k");
+                case 'л' -> sb.append("l");
+                case 'м' -> sb.append("m");
+                case 'н' -> sb.append("n");
+                case 'о' -> sb.append("o");
+                case 'п' -> sb.append("p");
+                case 'р' -> sb.append("r");
+                case 'с' -> sb.append("s");
+                case 'т' -> sb.append("t");
+                case 'у' -> sb.append("u");
+                case 'ф' -> sb.append("f");
+                case 'х' -> sb.append("h");
+                case 'ц' -> sb.append("ts");
+                case 'ч' -> sb.append("ch");
+                case 'ш' -> sb.append("sh");
+                case 'щ' -> sb.append("sch");
+                case 'ъ' -> {}
+                case 'ы' -> sb.append("y");
+                case 'ь' -> {}
+                case 'э' -> sb.append("e");
+                case 'ю' -> sb.append("yu");
+                case 'я' -> sb.append("ya");
+                default -> sb.append(ch);
+            }
+        }
+        return sb.toString();
+    }
+}
